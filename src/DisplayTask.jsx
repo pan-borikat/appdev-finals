@@ -1,0 +1,98 @@
+import React, { useState } from "react";
+import { FaPencilAlt, FaCheck } from "react-icons/fa";
+import { RiDeleteBin6Fill } from "react-icons/ri";
+
+const DisplayTask = ({ tasks, setTasks }) => {
+    const [editingTaskId, setEditingTaskId] = useState(null);
+    const [editedText, setEditedText] = useState("");
+
+    const deleteTask = (taskId) => {
+        setTasks(tasks.filter((task) => task.id !== taskId));
+    };
+
+    const toggleTaskDone = (taskId) => {
+        setTasks(
+            tasks.map((task) =>
+                task.id === taskId ? { ...task, done: !task.done } : task
+            )
+        );
+    };
+
+    const startEditing = (taskId, text) => {
+        setEditingTaskId(taskId);
+        setEditedText(text);
+    };
+
+    const saveTaskEdit = (taskId) => {
+        setTasks(
+            tasks.map((task) =>
+                task.id === taskId ? { ...task, text: editedText } : task
+            )
+        );
+        setEditingTaskId(null);
+        setEditedText("");
+    };
+
+    return (
+        <ul className="my-0.5 p-2.5 rounded-lg border-t-2 border-b-2 border-[#f6f4d2]">
+            {tasks.map((task) => (
+                <li
+                    key={task.id}
+                    className={`flex flex-col items-start p-4 rounded-lg shadow-md transition duration-300 ${
+                        task.done ? "line-through text-[#b2b2b2]" : "text-white"
+                    }`}
+                >
+                    {/* Action Buttons */}
+                    <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+                        {/* Toggle Done Button */}
+                        <button
+                            onClick={() => toggleTaskDone(task.id)}
+                            className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                        >
+                            <FaCheck />
+                        </button>
+
+                        {/* Delete Button */}
+                        <button
+                            onClick={() => deleteTask(task.id)}
+                            className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                        >
+                            <RiDeleteBin6Fill />
+                        </button>
+
+                        {/* Edit/Save Button */}
+                        {editingTaskId === task.id ? (
+                            <button
+                                onClick={() => saveTaskEdit(task.id)}
+                                className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                            >
+                                Save
+                            </button>
+                        ) : (
+                            <button
+                                onClick={() => startEditing(task.id, task.text)}
+                                className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                            >
+                                <FaPencilAlt />
+                            </button>
+                        )}
+                    </div>
+
+                    {/* Task Text or Inline Input */}
+                    {editingTaskId === task.id ? (
+                        <input
+                            type="text"
+                            value={editedText}
+                            onChange={(e) => setEditedText(e.target.value)}
+                            className="w-full bg-gray-100 text-gray-800 p-2 rounded-md border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                        />
+                    ) : (
+                        <span className={`w-full ${task.done ? 'line-through' : ''}`}>{task.text}</span>
+                    )}
+                </li>
+            ))}
+        </ul>
+    );
+};
+
+export default DisplayTask;
