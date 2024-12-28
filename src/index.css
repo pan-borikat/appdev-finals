@@ -5,55 +5,50 @@
 
 @font-face {
   font-family: 'Poppins';
-  src: url("./assets/Poppins/Poppins-Regular.ttf") format("truetype");
+  src: url("/Poppins/Poppins-Regular.ttf") format("truetype");
   font-weight: normal;
   font-style: normal;
 }
 @font-face {
   font-family: 'Poppins';
-  src: url("./assets/Poppins/Poppins-Bold.ttf") format("truetype");
+  src: url("/Poppins/Poppins-Bold.ttf") format("truetype");
   font-weight: bold;
   font-style: normal;
 }
 @font-face {
   font-family: 'Poppins';
-  src: url("./assets/Poppins/Poppins-Italic.ttf") format("truetype");
+  src: url("/Poppins/Poppins-Italic.ttf") format("truetype");
   font-weight: normal;
   font-style: italic;
 }
 @font-face {
   font-family: 'Poppins';
-  src: url("./assets/Poppins/Poppins-BoldItalic.ttf") format("truetype");
+  src: url("/Poppins/Poppins-BoldItalic.ttf") format("truetype");
   font-weight: bold;
   font-style: italic;
 }
 @font-face {
   font-family: 'Poppins';
-  src: url("./assets/Poppins/Poppins-Medium.ttf") format("truetype"); 
+  src: url("/Poppins/Poppins-Medium.ttf") format("truetype"); 
   font-weight: 500;
   font-style: normal;
 }
 @font-face {
   font-family: 'Poppins';
-  src: url("./assets/Poppins/Poppins-MediumItalic.ttf") format("truetype"); 
+  src: url("/Poppins/Poppins-MediumItalic.ttf") format("truetype"); 
   font-weight: 500;
   font-style: italic;
 }
+
 @font-face {
   font-family: 'Poppins';
-  src: url("C:\Users\rtris\OneDrive - ctu.edu.ph\Documents\3RD YEAR\APP DEV\AI Project\src\assets\Patrick_Hand,PoppinsPoppins-SemiBold.ttf") format("truetype"); 
-  font-weight: 600;
-  font-style: normal;
-}
-@font-face {
-  font-family: 'Poppins';
-  src: url("./assets/Poppins/Poppins-SemiBoldItalic.ttf") format("truetype"); 
+  src: url("/Poppins/Poppins-SemiBoldItalic.ttf") format("truetype"); 
   font-weight: 600;
   font-style: italic;
 }
 @font-face {
   font-family: 'Patrick Hand';
-  src: url("./assets/Patrick_Hand/PatrickHand-Regular.ttf") format("truetype"); 
+  src: url("/Patrick_Hand/PatrickHand-Regular.ttf") format("truetype"); 
   font-weight: 300;
   font-style: normal;
 }

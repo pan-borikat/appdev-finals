@@ -38,16 +38,16 @@ const DisplayTask = ({ tasks, setTasks }) => {
             {tasks.map((task) => (
                 <li
                     key={task.id}
-                    className={`flex flex-col items-start p-4 rounded-lg shadow-md transition duration-300 ${
+                    className={`flex items-center p-4 rounded-lg shadow-md transition duration-300 ${
                         task.done ? "line-through text-[#b2b2b2]" : "text-white"
                     }`}
                 >
                     {/* Action Buttons */}
-                    <div className="flex items-center gap-2 mb-2 flex-shrink-0">
+                    <div className="flex items-center gap-4 mr-6 flex-shrink-0">
                         {/* Toggle Done Button */}
                         <button
                             onClick={() => toggleTaskDone(task.id)}
-                            className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                            className="border-none bg-transparent text-[#f6f4d2] cursor-pointer p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
                         >
                             <FaCheck />
                         </button>
@@ -55,7 +55,7 @@ const DisplayTask = ({ tasks, setTasks }) => {
                         {/* Delete Button */}
                         <button
                             onClick={() => deleteTask(task.id)}
-                            className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                            className="border-none bg-transparent text-[#f6f4d2] cursor-pointer p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
                         >
                             <RiDeleteBin6Fill />
                         </button>
@@ -64,21 +64,19 @@ const DisplayTask = ({ tasks, setTasks }) => {
                         {editingTaskId === task.id ? (
                             <button
                                 onClick={() => saveTaskEdit(task.id)}
-                                className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                                className="border-none bg-transparent text-[#f6f4d2] cursor-pointer p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
                             >
                                 Save
                             </button>
                         ) : (
                             <button
                                 onClick={() => startEditing(task.id, task.text)}
-                                className="border-none bg-transparent text-[#f6f4d2] cursor-pointer mr-2.5 p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
+                                className="border-none bg-transparent text-[#f6f4d2] cursor-pointer p-1.25 transition-colors duration-300 hover:text-[#6d597a]"
                             >
                                 <FaPencilAlt />
                             </button>
                         )}
                     </div>
-
-                    {/* Task Text or Inline Input */}
                     {editingTaskId === task.id ? (
                         <input
                             type="text"
