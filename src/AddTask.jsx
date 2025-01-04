@@ -214,7 +214,9 @@ const AddTask = () => {
                             <div key={task.TASK_ID} className='task-card flex flex-col m-3 p-3 rounded-xl h-[250px] shadow-lg'>
                                 <p className='duedate'>Due Date: {new Date(task.task_due_date).toLocaleDateString('en-CA')}</p>
                                 <p className='status'>Status: {task.task_status}</p>
-                                <p className='task_desc h-[150px] text-wrap pb-[30%]'>Task: {task.task_desc}</p>
+                                <p>Task:</p>
+                                <p className='task_desc h-[150px] text-wrap pb-[30%]'>{task.task_desc}</p>
+
                                 <span className='btn-div mx-auto h-[35px] flex flex-wrap justify-center'>
                                     <button
                                         className='p-1 mr-2 rounded-lg bg-[#c6a0b6]'>
