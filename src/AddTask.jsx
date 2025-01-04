@@ -13,6 +13,9 @@ const AddTask = () => {
     const [taskDescription, setTaskDescription] = useState('');
     const [taskStatus, setTaskStatus] = useState('Pending');
     const [dueDate, setDueDate] = useState('');
+    const [isEditing, setIsEditing] = useState(false);
+    const [selectedTask, setSelectedTask] = useState(null);
+
 
     useEffect(() => {
             const fetchData = async () => {
@@ -47,7 +50,7 @@ const AddTask = () => {
                     body: JSON.stringify(newTask),
                 });
 
-                if (response.ok) {
+                if(response.ok) {
                     const savedTask = await response.json();
                     setTasks([...tasks, savedTask]); 
                     setFieldsVisible(false); 
@@ -84,12 +87,64 @@ const AddTask = () => {
         }
     } 
 
+    const handleEditSave = async () => {
+        if(selectedTask) {
+            const updatedTask = {
+                task_desc: taskDescription,
+                task_due_date: dueDate,
+                task_status: taskStatus,
+            };
+
+            try {
+                const response = await fetch(`http://localhost:5000/task/${selectedTask.task_id}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type' : 'application/json',
+                    },
+                    body: JSON.stringify(updatedTask),
+                });
+
+                if(response.ok){
+                    const updatedTaskData = await response.json();
+                    setTasks(tasks.map((task) => 
+                        task.task_id === updatedTaskData.task_id ? updatedTaskData : task
+                    ));
+                    setIsEditing(false);
+                    setFieldsVisible(false);
+                    setSelectedTask(null);
+                    setTaskDescription('');
+                    setDueDate('');
+                    setTaskStatus('Pending');
+                } else {
+                    alert('Failed to update task.');
+                }
+            } catch (error) {
+                console.error('Error updating task: ', error)
+                alert('Failed to update task.')
+            }
+        }
+    }
+
+    const handleEditBtn = (task) => {
+        setIsEditing(true);
+        setSelectedTask(task);
+        setTaskDescription(task.task_desc);
+        setDueDate(task.task_due_date.split('T')[0]);
+        setTaskStatus(task.task_status);
+        setFieldsVisible(true);
+    };
+
     const handleAddBtn = () => {
         setFieldsVisible(true);
     }
 
     const handleCancelBtn = () => {
         setFieldsVisible(false);
+        setIsEditing(false);
+        setSelectedTask(null);
+        setTaskDescription('');
+        setDueDate('');
+        setTaskStatus('Pending');
     }
 
 
@@ -123,7 +178,7 @@ const AddTask = () => {
                         {/* task input */}
                         {fieldsVisible && (
                             <div className='fixed bg-[#6e4658] rounded-xl left-[18%] top-[35%] w-[400px] h-[400px] task-input flex flex-col'>
-                                <h2 className='m-5 text-2xl'>Add Task</h2>
+                                <h2 className='m-5 text-2xl'>{ isEditing ? 'Edit Task' : 'Add Task'}</h2>
                                 <p className='ml-5'>Date</p>
                                 <input 
                                     type="date" 
@@ -149,22 +204,32 @@ const AddTask = () => {
                                 
                                 <span className='flex mx-auto mb-2 w-full justify-center text-[#6e4658]'>
                                     <button onClick={handleCancelBtn} className='p-1 bg-[#dcc5d3] rounded-md m-1 w-[20%]'>Cancel</button>
-                                    <button onClick={handleSaveBtn} className='p-1 bg-[#dcc5d3] rounded-md m-1 w-[20%]'>Save</button>
+                                    <button onClick={isEditing ? handleEditSave : handleSaveBtn} className='p-1 bg-[#dcc5d3] rounded-md m-1 w-[20%]'>{isEditing ? 'Update' : 'Save'}</button>
                                 </span>
                             </div>
                         )}
 
                         {/* task cards */}
                         {tasks.map((task) => (
-                            <div key={task.TASK_ID} className='task-card flex flex-col m-3 p-3 rounded-xl h-[200px] shadow-lg'>
-                                <p className='duedate'>Due Date: {new Date(task.task_due_date).toLocaleDateString()}</p>
+                            <div key={task.TASK_ID} className='task-card flex flex-col m-3 p-3 rounded-xl h-[250px] shadow-lg'>
+                                <p className='duedate'>Due Date: {new Date(task.task_due_date).toLocaleDateString('en-CA')}</p>
                                 <p className='status'>Status: {task.task_status}</p>
-                                <p className='task_desc text-wrap pb-[30%]'>Task: {task.task_desc}</p>
-                                <span className='btn-div mx-auto w-full flex justify-center'>
-                                    <button className='p-1 mr-2 rounded-lg bg-[#c6a0b6]'>
+                                <p className='task_desc h-[150px] text-wrap pb-[30%]'>Task: {task.task_desc}</p>
+                                <span className='btn-div mx-auto h-[35px] flex flex-wrap justify-center'>
+                                    <button
+                                        className='p-1 mr-2 rounded-lg bg-[#c6a0b6]'>
                                         <IoCheckmarkDoneCircleSharp className='text-2xl'/>
                                     </button>
-                                    <button className='p-1 mr-2 rounded-lg bg-[#c6a0b6]'>
+                                    <button 
+                                        onClick={() => {
+                                            handleEditBtn(task);
+                                            setIsEditing(true); 
+                                            setSelectedTask(task); 
+                                            setTaskDescription(task.task_desc);
+                                            setDueDate(new Date(task.task_due_date).toLocaleDateString('en-CA'));
+                                            setTaskStatus(task.task_status);
+                                        }}
+                                        className='p-1 mr-2 rounded-lg bg-[#c6a0b6]'>
                                         <RiEditCircleFill className='text-2xl'/>
                                     </button>
                                     <button 

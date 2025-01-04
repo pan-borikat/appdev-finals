@@ -68,14 +68,14 @@ app.get('/task', async(req, res) => {
 
 
 //update
-app.put('/task/:id', async(req, res) => {
-    const { id } = req.params;
-    const { task_desc, task_due_date } = req.body;
+app.put('/task/:task_id', async(req, res) => {
+    const { task_id } = req.params;
+    const { task_desc, task_due_date, task_status} = req.body;
     
     try {
         const updTask = await pool.query(
-            "UPDATE task SET task_desc = $1, task_due_date = $2 WHERE task_id = $3 RETURNING *",
-            [task_desc, task_due_date, id]
+            "UPDATE task SET task_desc = $1, task_due_date = $2, task_status = $3 WHERE task_id = $4 RETURNING *",
+            [task_desc, task_due_date, task_status, task_id]
         );
 
         res.status(200).json(updTask.rows[0]);
