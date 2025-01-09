@@ -52,7 +52,7 @@
   font-weight: 300;
   font-style: normal;
 }
-h1 {
+h1, h2 {
   font-family: 'Patrick Hand', cursive;
   font-size: 2.5rem;
   font-weight: 600;

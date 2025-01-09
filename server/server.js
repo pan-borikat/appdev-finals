@@ -13,7 +13,7 @@ app.use(cors());
 app.use(express.json());
 
 const pool = new Pool({
-    connectionString: process.env.DB_CONN_URL,
+    connectionString: "postgresql://postgres:GNxbcpmmWONByKOOMbSVEBwdMQayiTVX@junction.proxy.rlwy.net:41280/railway",
     ssl: false
 });
 
@@ -117,9 +117,63 @@ app.post('/send-verification-email', (req, res) => {
     const mailOptions = {
         from: process.env.EMAIL_USER,
         to: email,
-        subject: 'Email Verification Code',
-        text: `Your verification code is: ${code}`
-    };
+        subject: 'VaTask Verification Code',
+        html: `
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>VaTask Verification Code</title>
+            <style>
+              body {
+                font-family: Arial, sans-serif;
+                line-height: 1.6;
+                color: #333;
+                max-width: 600px;
+                margin: 0 auto;
+                padding: 20px;
+              }
+              .container {
+                background-color: #f9f9f9;
+                border-radius: 5px;
+                padding: 20px;
+                text-align: center;
+              }
+              h1 {
+                color: #915f78;
+              }
+              .code {
+                font-size: 24px;
+                font-weight: bold;
+                color: #882054;
+                padding: 10px;
+                background-color: #f0f0f0;
+                border-radius: 5px;
+                margin: 20px 0;
+              }
+              .footer {
+                margin-top: 20px;
+                font-size: 12px;
+                color: #666;
+              }
+            </style>
+          </head>
+          <body>
+            <div class="container">
+              <h1>VaTask Email Verification</h1>
+              <p>Thank you for signing up with VaTask. To complete your registration, please use the following verification code:</p>
+              <div class="code">${code}</div>
+              <p>If you didn't request this code, please ignore this email.</p>
+              <div class="footer">
+                <p>This is an automated message, please do not reply to this email.</p>
+                <p>&copy; 2024 VaTask. All rights reserved.</p>
+              </div>
+            </div>
+          </body>
+          </html>
+        `
+      };
 
     transporter.sendMail(mailOptions, (error, info) => {
         if (error) {

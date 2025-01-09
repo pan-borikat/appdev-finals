@@ -32,12 +32,10 @@ const SignUp = ({ onSignUpSuccess }) => {
                 email: formData.email,
                 code: code,
             });
-            // alert('Verification email sent');
-            setVerificationStatus('Verification code sent')
+            setVerificationStatus('Verification code sent');
             setShowVerificationInput(true);
         } catch (error) {
             console.error('Error sending email:', error);
-            // alert('Error sending verification email');
             setVerificationStatus('Error sending verification email');
         }
     };
@@ -54,19 +52,18 @@ const SignUp = ({ onSignUpSuccess }) => {
     };
 
     return (
-        <div className='bg-[#915f78] min-h-screen flex items-center justify-center'>
-            <div className='flex flex-col w-[30%] bg-[#ffffff] p-10 rounded-lg shadow-lg text-center'>
+        <div className="bg-gradient-to-br from-[#915f78] to-[#882054] min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
+            <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-2xl">
+                <h2 className="text-3xl font-extrabold text-center text-[#882054] mb-8">Sign Up</h2>
                 
-                <h2 className='text-3xl font-bold mb-10 text-[#882054]'>Sign Up</h2>
-                
-                <div className='flex flex-col items-center'>
+                <form className="space-y-4">
                     <input
                         type="text"
                         name="firstName"
                         placeholder="First Name"
                         value={formData.firstName}
                         onChange={handleChange}
-                        className='fname border border-black border-s-4 p-2 mb-4 w-[80%] rounded-md focus:outline-none'
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78]"
                     />
                     <input
                         type="text"
@@ -74,7 +71,7 @@ const SignUp = ({ onSignUpSuccess }) => {
                         placeholder="Last Name"
                         value={formData.lastName}
                         onChange={handleChange}
-                        className='lname border border-black border-s-4 p-2 mb-4 w-[80%] rounded-md focus:outline-none'
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78]"
                     />
                     <input
                         type="date"
@@ -82,7 +79,7 @@ const SignUp = ({ onSignUpSuccess }) => {
                         placeholder="Birthday"
                         value={formData.bday}
                         onChange={handleChange}
-                        className='bdate border border-black border-s-4 p-2 mb-4 w-[80%] rounded-md focus:outline-none'
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78]"
                     />
                     <input
                         type="email"
@@ -90,7 +87,7 @@ const SignUp = ({ onSignUpSuccess }) => {
                         placeholder="Email"
                         value={formData.email}
                         onChange={handleChange}
-                        className='email border border-black border-s-4 p-2 mb-4 w-[80%] rounded-md focus:outline-none'
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78]"
                     />
                     <input
                         type="text"
@@ -98,7 +95,7 @@ const SignUp = ({ onSignUpSuccess }) => {
                         placeholder="Username"
                         value={formData.username}
                         onChange={handleChange}
-                        className='username border border-black border-s-4 p-2 mb-4 w-[80%] rounded-md focus:outline-none'
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78]"
                     />
                     <input
                         type="password"
@@ -106,48 +103,54 @@ const SignUp = ({ onSignUpSuccess }) => {
                         placeholder="Password"
                         value={formData.password}
                         onChange={handleChange}
-                        className='upass border border-black border-s-4 p-2 mb-6 w-[80%] rounded-md focus:outline-none'
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78]"
                     />
                     <button 
+                        type="button"
                         onClick={handleSignUp} 
-                        className='w-[80%] bg-[#915f78] text-white px-4 py-2 rounded-lg transition-colors duration-300 hover:bg-[#8d738f] mb-10'
+                        className="w-full bg-[#915f78] text-white py-2 rounded-md transition-colors duration-300 hover:bg-[#8d738f] focus:outline-none focus:ring-2 focus:ring-[#915f78] focus:ring-offset-2"
                     >
                         Sign Up
                     </button>
+                </form>
 
-                    
-
-                    {verificationStatus && (
-                        <> 
-                            <div className='flex flex-col w-[80%] mx-auto line h-0.5 bg-[#000000] mb-10'></div>
-                            <div className='flex flex-col w-[80%] mx-auto text-sm font-medium text-white justify-center line h-8 bg-[#882054] mb-2'>{verificationStatus}</div>
-                        </>
-                    )}
-                    
-                    {showVerificationInput && (
-                        
-                        <>
-                            <input
-                                type="text"
-                                name="verificationCode"
-                                placeholder="Verification Code"
-                                value={formData.verificationCode}
-                                onChange={handleChange}
-                                className='border border-black border-s-4 p-2 mb-4 w-[80%] rounded-md focus:outline-none'
-                            />
-                            <button 
-                                onClick={handleVerify} 
-                                className='w-[80%] bg-[#915f78] text-white px-4 py-2 rounded-lg transition-colors duration-300 hover:bg-[#8d738f]'
-                            >
-                                Verify Email
-                            </button>
-                        </>
-                    )}
-                    {isVerified && <p className='text-white mt-4'>Email verified successfully!</p>}
-                </div>
+                {verificationStatus && (
+                    <div className="mt-6">
+                        <div className="w-full h-px bg-gray-300 mb-4"></div>
+                        <div className="bg-[#882054] text-white text-sm font-medium p-2 rounded-md">
+                            {verificationStatus}
+                        </div>
+                    </div>
+                )}
+                
+                {showVerificationInput && (
+                    <div className="mt-6 space-y-4">
+                        <input
+                            type="text"
+                            name="verificationCode"
+                            placeholder="Verification Code"
+                            value={formData.verificationCode}
+                            onChange={handleChange}
+                            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78]"
+                        />
+                        <button 
+                            type="button"
+                            onClick={handleVerify} 
+                            className="w-full bg-[#915f78] text-white py-2 rounded-md transition-colors duration-300 hover:bg-[#8d738f] focus:outline-none focus:ring-2 focus:ring-[#915f78] focus:ring-offset-2"
+                        >
+                            Verify Email
+                        </button>
+                    </div>
+                )}
+                {isVerified && (
+                    <p className="mt-4 text-green-600 font-medium text-center">
+                        Email verified successfully!
+                    </p>
+                )}
             </div>
         </div>
     );
 };
 
 export default SignUp;
+
