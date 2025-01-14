@@ -1,14 +1,34 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { IoSend, IoClose } from "react-icons/io5";
-import { LuBotMessageSquare } from "react-icons/lu";
-
 
 const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
   const chatBodyRef = useRef(null);
-  const [chatHistory, setChatHistory] = useState([]);
   const [userMessage, setUserMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [chatHistory, setChatHistory] = useState([
+    {
+      role: "bot",
+      text: `Hola! I am VATask, your AI Task Assistant here to help you organize your tasks. 
+      
+      Your tasks, my mission—let's conquer them together! 😎
+      
+      🤖 Commands for creating, showing, and deleting a task 🤖
+    
+      📝Create <taskdesc> <duedate> 
+      ex: "Create 3km jog 2025-01-12"
 
+      📝Show tasks due <time triad> 
+      ex: "Show tasks due yesterday"
+
+      🗑️Delete <taskname> task 
+      ex: "Delete prepare for meeting task"
+
+      Type in "Show commands" in case you forgot the commands.
+      `,
+      timestamp: new Date(),
+    },
+  ]);
+  
   const API_KEY = "AIzaSyAY6RK4zHRko5y-Urif1Es8zDspjCTzzMc";
   const API_URL = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-pro:generateContent?key=${API_KEY}`;
 
@@ -20,6 +40,36 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
       });
     }
   };
+
+  useEffect(() => {
+    const fetchTasks = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/task");
+
+        if (!response.ok) {
+          throw new Error("Failed to fetch tasks");
+        }
+
+        const tasks = await response.json();
+        const tasksMessage = {
+          role: "bot",
+          text: "Here are your current tasks:\n" + tasks.map((task) => `${task.task_desc} (Due: ${new Date(task.task_due_date).toLocaleDateString()})`).join("\n"),
+          timestamp: new Date(),
+        };
+        setChatHistory((prev) => [...prev, tasksMessage]);
+      } catch (error) {
+        console.error("Error fetching tasks:", error);
+        const errorMessage = {
+          role: "bot",
+          text: "Oops! Something went wrong while fetching the tasks. Please try again later.",
+          timestamp: new Date(),
+        };
+        setChatHistory((prev) => [...prev, errorMessage]);
+      }
+    };
+
+    fetchTasks();
+  }, []);
 
   const handleSendMessage = async () => {
     if (!userMessage.trim()) return;
@@ -33,7 +83,99 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
     setUserMessage("");
     scrollToBottom();
 
+    if (userMessage.trim().toLowerCase() === "show commands") {
+      showCommands();
+      return;
+    }
+
+    const createCommandMatch = userMessage.trim().toLowerCase().startsWith("create");
+    if (createCommandMatch) {
+      const taskDetails = parseCreateCommand(userMessage);
+      if (taskDetails) {
+        await createTask(taskDetails.description, taskDetails.dueDate);
+        return;
+      } else {
+        const errorMessage = {
+          role: "bot",
+          text: "Oops! The date format seems incorrect. Please use 'YYYY-MM-DD'. Example: 'Create task 2025-01-12'.",
+          timestamp: new Date(),
+        };
+        setChatHistory((prev) => [...prev, errorMessage]);
+        return;
+      }
+    }
+
     await fetchBotResponse([...chatHistory, newMessage]);
+  };
+
+  const showCommands = () => {
+    const commands = {
+      role: "bot",
+      text: `🤖 Commands for creating, showing, and deleting a task 🤖
+      
+      📝Create <taskdesc> <duedate> 
+      ex: "Create 3km jog 2025-01-12"
+
+      📝Show tasks due <time triad> 
+      ex: "Show tasks due yesterday"
+
+      🗑️Delete <taskname> task 
+      ex: "Delete prepare for meeting task"`,
+      timestamp: new Date(),
+    };
+    setChatHistory((prev) => [...prev, commands]);
+  };
+
+  const parseCreateCommand = (message) => {
+    const parts = message.trim().split(" ");
+    if (parts.length < 3) return null;
+    
+    const dueDate = parts[parts.length - 1];
+    const taskDesc = parts.slice(1, parts.length - 1).join(" ");
+  
+    const dateRegex = /^\d{4}-\d{2}-\d{2}$/; 
+    if (!dateRegex.test(dueDate)) {
+      return null;
+    }
+    return { description: taskDesc, dueDate };
+  };
+  
+  const createTask = async (description, dueDate) => {
+    try {
+      const newTask = {
+        task_desc: description,
+        task_due_date: dueDate,
+        task_status: "Pending"
+      };
+
+      const response = await fetch('http://localhost:5000/api/task', { 
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(newTask),
+      });
+  
+      if (!response.ok) {
+        throw new Error("Failed to create task");
+      }
+  
+      const data = await response.json();
+      const successMessage = {
+        role: "bot",
+        text: `Task created successfully: "${data.task_desc}" due on ${new Date(data.task_due_date).toLocaleDateString()}`,
+        timestamp: new Date(),
+      };
+      setChatHistory((prev) => [...prev, successMessage]);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      const errorMessage = {
+        role: "bot",
+        text: "Oops! Something went wrong while creating the task. Please try again later.",
+        timestamp: new Date(),
+      };
+      setChatHistory((prev) => [...prev, errorMessage]);
+    }
   };
 
   const fetchBotResponse = async (conversation) => {
@@ -110,12 +252,15 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[75%] rounded-lg px-4 py-2 ${msg.role === "user"
+                  className={`max-w-[75%] rounded-lg px-4 py-2 text-sm ${
+                    msg.role === "user"
                       ? "bg-gradient-to-r from-[#915f78] to-[#882054] text-white"
                       : "bg-white border border-gray-200 text-gray-800"
-                    }`}
+                  }`}
                 >
-                  <p className="break-words">{msg.text}</p>
+                  {msg.text.split("\n").map((line, idx) => (
+                    <p key={idx} className="break-words">{line.trim() === "" ? <>&nbsp;</> : line}</p>
+                  ))}
                   <p className="text-xs mt-1 opacity-70">
                     {msg.timestamp.toLocaleTimeString()}
                   </p>
@@ -139,6 +284,11 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
               placeholder="Type a message..."
               value={userMessage}
               onChange={(e) => setUserMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleSendMessage();
+                }
+              }}
             />
             <button
               className="ml-2 bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full hover:opacity-90 transition-opacity"
@@ -154,7 +304,7 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
           className="fixed bottom-4 right-4 bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-4 rounded-full shadow-lg"
           onClick={() => setIsChatbotVisible(true)}
         >
-          <LuBotMessageSquare />
+          Open Chatbot
         </button>
       )}
     </>
@@ -162,3 +312,4 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
 };
 
 export default Chatbot;
+
