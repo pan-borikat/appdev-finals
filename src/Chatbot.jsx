@@ -1,5 +1,7 @@
 import React, { useRef, useState } from "react";
 import { IoSend, IoClose } from "react-icons/io5";
+import { LuBotMessageSquare } from "react-icons/lu";
+
 
 const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
   const chatBodyRef = useRef(null);
@@ -108,11 +110,10 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[75%] rounded-lg px-4 py-2 ${
-                    msg.role === "user"
+                  className={`max-w-[75%] rounded-lg px-4 py-2 ${msg.role === "user"
                       ? "bg-gradient-to-r from-[#915f78] to-[#882054] text-white"
                       : "bg-white border border-gray-200 text-gray-800"
-                  }`}
+                    }`}
                 >
                   <p className="break-words">{msg.text}</p>
                   <p className="text-xs mt-1 opacity-70">
@@ -153,7 +154,7 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
           className="fixed bottom-4 right-4 bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-4 rounded-full shadow-lg"
           onClick={() => setIsChatbotVisible(true)}
         >
-          Open Chatbot
+          <LuBotMessageSquare />
         </button>
       )}
     </>

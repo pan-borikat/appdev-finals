@@ -100,7 +100,7 @@ app.delete('/task/:id', async(req, res) => {
     }
 });
 
-
+// email verification
 app.post('/send-verification-email', (req, res) => {
     const { email, code } = req.body;
 
@@ -184,6 +184,59 @@ app.post('/send-verification-email', (req, res) => {
             res.status(200).send('Email sent');
         }
     });
+});
+
+// Mark a task as complete and move to history
+app.put('/task/:task_id/complete', async (req, res) => {
+    const { task_id } = req.params;
+
+    try {
+        const updatedTask = await pool.query(
+            "UPDATE task SET task_status = 'Completed', task_is_history = TRUE WHERE task_id = $1 RETURNING *",
+            [task_id]
+        );
+
+        if (updatedTask.rows.length === 0) {
+            return res.status(404).json({ error: "Task not found" });
+        }
+
+        res.status(200).json(updatedTask.rows[0]);
+    } catch (error) {
+        console.error("Error completing task: ", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// Fetch history tasks
+app.get('/task/history', async (req, res) => {
+    try {
+        const historyTasks = await pool.query(
+            "SELECT * FROM task WHERE task_is_history = TRUE ORDER BY created_at DESC"
+        );
+
+        res.status(200).json(historyTasks.rows);
+    } catch (error) {
+        console.error("Error fetching history tasks: ", error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+
+// create account
+app.post('/signup', async (req, res) =>{
+    const { firstName, lastName, email, bday, username, password } = req.body;
+    try {
+        const newUser = await pool.query(
+            "INSERT INTO users (fname, lname, email, bday, username, password) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
+            [ firstName, lastName, email, bday, username, password ]
+        );
+
+         res.status(201).json(newUser.rows[0]);
+    } catch (error) {
+        console.error("Error creating account: ", error);
+        res.status(500).json({ error: error.message });
+    }
 });
 
 app.listen(port, () => {

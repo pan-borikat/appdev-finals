@@ -40,12 +40,29 @@ const SignUp = ({ onSignUpSuccess }) => {
         }
     };
 
-    const handleVerify = () => {
+    const handleVerify = async () => {
         if (formData.verificationCode === generatedCode) {
             setIsVerified(true);
             setVerificationStatus('Email verified successfully!');
-            onSignUpSuccess();
-            navigate('/addtask');
+
+            // Send sign-up data to the backend and store it in the database
+            try {
+                const response = await axios.post('http://localhost:5000/signup', {
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    bday: formData.bday,
+                    email: formData.email,
+                    username: formData.username,
+                    password: formData.password,
+                });
+
+                console.log('User created:', response.data.user);
+                onSignUpSuccess();
+                navigate('/addtask'); // Redirect to the next page after successful sign-up
+            } catch (error) {
+                console.error('Error creating user:', error);
+                setVerificationStatus('Error creating user');
+            }
         } else {
             setVerificationStatus('Invalid verification code.');
         }
