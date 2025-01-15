@@ -6,11 +6,9 @@ import { MdDelete, MdHistory } from "react-icons/md";
 import Chatbot from "./Chatbot.jsx";
 import { LuBotMessageSquare } from "react-icons/lu";
 import { useNavigate } from "react-router-dom"; // Assuming you are using React Router
-import { useGlobalContext } from "./GlobalProvider";
 
 
 const AddTask = () => {
-  const { globalVariable } = useGlobalContext();
   const [tasks, setTasks] = useState([]);
   const [fieldsVisible, setFieldsVisible] = useState(false);
   const [taskDescription, setTaskDescription] = useState("");
@@ -20,42 +18,30 @@ const AddTask = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isChatbotVisible, setIsChatbotVisible] = useState(true);
   const [isProfileDropdownVisible, setIsProfileDropdownVisible] = useState(false);
-  const [isHistoryVisible, setIsHistoryVisible] = useState(false); 
-  const [historyTasks, setHistoryTasks] = useState([]); 
-  const [userData, setUserData] = useState(null);
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false); // New state for History toggle
+  const [historyTasks, setHistoryTasks] = useState([]); // State for history tasks
 
   const navigate = useNavigate();
 
   const handleLogout = () => {
+    // Clear authentication data (e.g., tokens)
     localStorage.removeItem("authToken");
-    navigate("/"); 
+    navigate("/"); // Redirect to login page
   };
 
   useEffect(() => {
-    if (globalVariable.user && globalVariable.user.id) {
-        // Fetch user data after login
-        const fetchUserData = async () => {
-            try {
-                const response = await fetch(`http://localhost:5000/users/${globalVariable.user.id}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    setUserData(data);
-                } else {
-                    console.error('Failed to fetch user data');
-                }
-            } catch (error) {
-                console.error('Error fetching data: ', error);
-            }
-        };
+    const fetchData = async () => {
+      try {
+        const response = await fetch("http://localhost:5000/task");
+        const data = await response.json();
+        setTasks(data);
+      } catch (error) {
+        console.error("Error fetching data: ", error);
+      }
+    };
 
-        fetchUserData();
-    } else {
-        console.log('User is not available or user.id is missing. Skipping fetch.');
-    }
-}, [globalVariable.user]);  // Re-run the effect if globalVariable.user changes
-
-
-  
+    fetchData();
+  }, []);
 
   const handleSaveBtn = async () => {
     if (taskDescription && dueDate) {
@@ -76,7 +62,7 @@ const AddTask = () => {
 
         if (response.ok) {
           const savedTask = await response.json();
-          setGlobalVariable((prev) => ({ ...prev, tasks: [...prev.tasks, savedTask] }));
+          setTasks([...tasks, savedTask]);
           setFieldsVisible(false);
           setTaskDescription("");
           setDueDate("");
@@ -100,8 +86,8 @@ const AddTask = () => {
       });
 
       if (response.ok) {
-        const updatedTasks = globalVariable.tasks.filter((task) => task.task_id !== taskId);
-        setGlobalVariable((prev) => ({ ...prev, tasks: updatedTasks }));
+        const updatedTasks = tasks.filter((task) => task.task_id !== taskId);
+        setTasks(updatedTasks);
       } else {
         alert("Failed to delete");
       }
@@ -196,9 +182,9 @@ const AddTask = () => {
       });
 
       if (response.ok) {
-        const updatedTasks = globalVariabletasks.filter((task) => task.task_id !== taskId);
+        const updatedTasks = tasks.filter((task) => task.task_id !== taskId);
         window.location.reload();
-        setGlobalVariable((prev) => ({ ...prev, tasks: updatedTasks }));
+        setTasks(updatedTasks);
       } else {
         alert("Failed to mark task as complete.");
       }
@@ -209,12 +195,10 @@ const AddTask = () => {
   };
 
   const handleEditBtn = (task) => {
-    const formattedDate = new Date(task.task_due_date).toLocaleDateString("en-CA");
-
     setIsEditing(true);
     setSelectedTask(task);
     setTaskDescription(task.task_desc);
-    setDueDate(formattedDate);
+    setDueDate(task.task_due_date.split("T")[0]);
     setTaskStatus(task.task_status);
     setFieldsVisible(true);
   };
@@ -236,7 +220,7 @@ const AddTask = () => {
     setIsHistoryVisible(!isHistoryVisible); // Toggle history visibility
   };
 
-  const displayTasks = isHistoryVisible ? historyTasks : globalVariable.tasks;
+  const displayTasks = isHistoryVisible ? historyTasks : tasks;
 
 
   return (

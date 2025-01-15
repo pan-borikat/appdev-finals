@@ -1,11 +1,8 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { IoSend, IoClose } from "react-icons/io5";
-import { LuBotMessageSquare } from "react-icons/lu";
-
 
 const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
   const chatBodyRef = useRef(null);
-  const [chatHistory, setChatHistory] = useState([]);
   const [userMessage, setUserMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([
@@ -20,7 +17,7 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
       📝Create <taskdesc> <duedate> 
       ex: "Create 3km jog 2025-01-12"
 
-      📝Show tasks - shows all the current task of the user
+      📝Show tasks - show all current tasks the user has 
 
       Type in "Show commands" in case you forgot the commands.
       `,
@@ -50,12 +47,12 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
         }
 
         const tasks = await response.json();
-        // const tasksMessage = {
-        //   role: "bot",
-        //   text: "Here are your current tasks:\n" + tasks.map((task) => `${task.task_desc} (Due: ${new Date(task.task_due_date).toLocaleDateString()})`).join("\n"),
-        //   timestamp: new Date(),
-        // };
-        // setChatHistory((prev) => [...prev, tasksMessage]);
+        const tasksMessage = {
+          role: "bot",
+          text: "Here are your current tasks:\n" + tasks.map((task) => `${task.task_desc} (Due: ${new Date(task.task_due_date).toLocaleDateString()})`).join("\n"),
+          timestamp: new Date(),
+        };
+        setChatHistory((prev) => [...prev, tasksMessage]);
       } catch (error) {
         console.error("Error fetching tasks:", error);
         const errorMessage = {
@@ -82,6 +79,28 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
     setUserMessage("");
     scrollToBottom();
 
+    if (userMessage.trim().toLowerCase() === "show commands") {
+      showCommands();
+      return;
+    }
+
+    const createCommandMatch = userMessage.trim().toLowerCase().startsWith("create");
+    if (createCommandMatch) {
+      const taskDetails = parseCreateCommand(userMessage);
+      if (taskDetails) {
+        await createTask(taskDetails.description, taskDetails.dueDate);
+        return;
+      } else {
+        const errorMessage = {
+          role: "bot",
+          text: "Oops! The date format seems incorrect. Please use 'YYYY-MM-DD'. Example: 'Create task 2025-01-12'.",
+          timestamp: new Date(),
+        };
+        setChatHistory((prev) => [...prev, errorMessage]);
+        return;
+      }
+    }
+
     await fetchBotResponse([...chatHistory, newMessage]);
   };
 
@@ -93,8 +112,7 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
       📝Create <taskdesc> <duedate> 
       ex: "Create 3km jog 2025-01-12"
 
-      📝Show tasks - shows all the current task of the user
-
+      📝Show tasks - show all current tasks the user has 
       `,
       timestamp: new Date(),
     };
@@ -227,12 +245,15 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
                 className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}
               >
                 <div
-                  className={`max-w-[75%] rounded-lg px-4 py-2 ${msg.role === "user"
+                  className={`max-w-[75%] rounded-lg px-4 py-2 text-sm ${
+                    msg.role === "user"
                       ? "bg-gradient-to-r from-[#915f78] to-[#882054] text-white"
                       : "bg-white border border-gray-200 text-gray-800"
-                    }`}
+                  }`}
                 >
-                  <p className="break-words">{msg.text}</p>
+                  {msg.text.split("\n").map((line, idx) => (
+                    <p key={idx} className="break-words">{line.trim() === "" ? <>&nbsp;</> : line}</p>
+                  ))}
                   <p className="text-xs mt-1 opacity-70">
                     {msg.timestamp.toLocaleTimeString()}
                   </p>
@@ -256,6 +277,11 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
               placeholder="Type a message..."
               value={userMessage}
               onChange={(e) => setUserMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter') {
+                  handleSendMessage();
+                }
+              }}
             />
             <button
               className="ml-2 bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full hover:opacity-90 transition-opacity"
@@ -271,7 +297,7 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
           className="fixed bottom-4 right-4 bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-4 rounded-full shadow-lg"
           onClick={() => setIsChatbotVisible(true)}
         >
-          <LuBotMessageSquare />
+          Open Chatbot
         </button>
       )}
     </>

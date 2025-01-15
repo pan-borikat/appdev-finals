@@ -1,28 +1,21 @@
 import React, { useState } from "react";
 import { FaPencilAlt, FaCheck } from "react-icons/fa";
 import { RiDeleteBin6Fill } from "react-icons/ri";
-import { useGlobalContext } from "./GlobalProvider";
 
 const DisplayTask = ({ tasks, setTasks }) => {
-    const { globalVariable, setGlobalVariable } = useGlobalContext();
-    const { tasks } = globalVariable;
     const [editingTaskId, setEditingTaskId] = useState(null);
     const [editedText, setEditedText] = useState("");
 
     const deleteTask = (taskId) => {
-        setGlobalVariable({
-            ...globalVariable,
-            tasks: tasks.filter((task) => task.id !== taskId)
-        });
+        setTasks(tasks.filter((task) => task.id !== taskId));
     };
 
     const toggleTaskDone = (taskId) => {
-        setGlobalVariable({
-            ...globalVariable,
-            tasks: tasks.map((task) =>
+        setTasks(
+            tasks.map((task) =>
                 task.id === taskId ? { ...task, done: !task.done } : task
-            ),
-        });
+            )
+        );
     };
 
     const startEditing = (taskId, text) => {
@@ -31,12 +24,11 @@ const DisplayTask = ({ tasks, setTasks }) => {
     };
 
     const saveTaskEdit = (taskId) => {
-        setGlobalVariable({
-            ...globalVariable,
-            tasks: tasks.map((task) =>
+        setTasks(
+            tasks.map((task) =>
                 task.id === taskId ? { ...task, text: editedText } : task
-            ),
-        });
+            )
+        );
         setEditingTaskId(null);
         setEditedText("");
     };

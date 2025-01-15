@@ -170,4 +170,3 @@ const SignUp = ({ onSignUpSuccess }) => {
 };
 
 export default SignUp;
-
