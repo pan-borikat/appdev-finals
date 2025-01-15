@@ -239,6 +239,23 @@ app.post('/signup', async (req, res) =>{
     }
 });
 
+app.get('/users/:id', (req, res) => {
+    const userId = req.params.id;
+    User.findById(userId)
+        .then(user => {
+            if (user) {
+                res.json(user);
+            } else {
+                res.status(404).send('User not found');
+            }
+        })
+        .catch(error => {
+            console.error(error);
+            res.status(500).send('Server error');
+        });
+});
+
+
 app.listen(port, () => {
     console.log(`Server is running on port ${port}`);
 });

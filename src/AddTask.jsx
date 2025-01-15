@@ -11,7 +11,6 @@ import { useGlobalContext } from "./GlobalProvider";
 
 const AddTask = () => {
   const { globalVariable } = useGlobalContext();
-
   const [tasks, setTasks] = useState([]);
   const [fieldsVisible, setFieldsVisible] = useState(false);
   const [taskDescription, setTaskDescription] = useState("");
@@ -21,36 +20,41 @@ const AddTask = () => {
   const [selectedTask, setSelectedTask] = useState(null);
   const [isChatbotVisible, setIsChatbotVisible] = useState(true);
   const [isProfileDropdownVisible, setIsProfileDropdownVisible] = useState(false);
-  const [isHistoryVisible, setIsHistoryVisible] = useState(false); // New state for History toggle
-  const [historyTasks, setHistoryTasks] = useState([]); // State for history tasks
+  const [isHistoryVisible, setIsHistoryVisible] = useState(false); 
+  const [historyTasks, setHistoryTasks] = useState([]); 
+  const [userData, setUserData] = useState(null);
 
   const navigate = useNavigate();
 
   const handleLogout = () => {
-    // Clear authentication data (e.g., tokens)
     localStorage.removeItem("authToken");
-    navigate("/"); // Redirect to login page
+    navigate("/"); 
   };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            if (!globalVariable.user || !globalVariable.user.id) {
-                console.log("User ID is not available. Skipping fetch.");
-                return; // Exit early if user ID is not available
-            }
-
+  useEffect(() => {
+    if (globalVariable.user && globalVariable.user.id) {
+        // Fetch user data after login
+        const fetchUserData = async () => {
             try {
-                const response = await fetch(`http://localhost:5000/task/${globalVariable.user.id}`);
-                const data = await response.json();
-                // Assuming you have a way to set tasks here
-                console.log("Fetched tasks:", data);
+                const response = await fetch(`http://localhost:5000/users/${globalVariable.user.id}`);
+                if (response.ok) {
+                    const data = await response.json();
+                    setUserData(data);
+                } else {
+                    console.error('Failed to fetch user data');
+                }
             } catch (error) {
-                console.error("Error fetching data: ", error);
+                console.error('Error fetching data: ', error);
             }
         };
 
-        fetchData();
-    }, [globalVariable.user?.id]);
+        fetchUserData();
+    } else {
+        console.log('User is not available or user.id is missing. Skipping fetch.');
+    }
+}, [globalVariable.user]);  // Re-run the effect if globalVariable.user changes
+
+
   
 
   const handleSaveBtn = async () => {
