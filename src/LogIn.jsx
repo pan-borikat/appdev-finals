@@ -1,49 +1,27 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
 import { useNavigate } from 'react-router-dom';
+import { useGlobalContext } from './GlobalProvider';
 
 const LoginForm = ({ onLoginSuccess, onCreateAccount }) => {
+  const { setGlobalVariable } = useGlobalContext();
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
   const navigate = useNavigate();
-
-  // useEffect(() => {
-  //   // Load the Facebook SDK script
-  //   window.fbAsyncInit = function() {
-  //     window.FB.init({
-  //       appId      : '561348250031293',
-  //       cookie     : true,
-  //       xfbml      : true,
-  //       version    : 'v11.0'
-  //     });
-  //     window.FB.AppEvents.logPageView();   
-  //   };
-
-  //   (function(d, s, id){
-  //     var js, fjs = d.getElementsByTagName(s)[0];
-  //     if (d.getElementById(id)) {return;}
-  //     js = d.createElement(s); js.id = id;
-  //     js.src = "https://connect.facebook.net/en_US/sdk.js";
-  //     fjs.parentNode.insertBefore(js, fjs);
-  //   }(document, 'script', 'facebook-jssdk'));
-  // }, []);
-
-  // const handleFBLogin = () => {
-  //   window.FB.login(response => {
-  //     if (response.authResponse) {
-  //       console.log('Welcome! Fetching your information.... ');
-  //       window.FB.api('/me', function(response) {
-  //         console.log('Good to see you, ' + response.name + '.');
-  //         onLoginSuccess();
-  //       });
-  //     } else {
-  //       console.log('User cancelled login or did not fully authorize.');
-  //     }
-  //   });
-  // }
 
   const handleSubmit = (event) => {
     event.preventDefault();
-    navigate('/addtask');
-  }
+    if (username && password) {
+      setGlobalVariable({
+        isLoggedIn: true,
+        user: { username }, 
+        tasks: [], 
+      });
+      navigate('/addtask');
+    } else {
+      alert('Please enter both username and password.');
+    }
+  };
 
   return (
     <div className="bg-gradient-to-br from-[#915f78] to-[#882054] min-h-screen flex items-center justify-center p-4">
@@ -56,6 +34,8 @@ const LoginForm = ({ onLoginSuccess, onCreateAccount }) => {
               className="w-full border-2 border-gray-300 p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78] transition duration-200"
               type="text" 
               placeholder="Username"
+              value={ username }
+              onChange={(e) => setUsername(e.target.value)}
             />
           </div>
           
@@ -64,6 +44,8 @@ const LoginForm = ({ onLoginSuccess, onCreateAccount }) => {
               className="w-full border-2 border-gray-300 p-3 rounded-md focus:outline-none focus:ring-2 focus:ring-[#915f78] transition duration-200"
               type="password" 
               placeholder="Password"
+              value={ password }
+              onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           
@@ -77,14 +59,6 @@ const LoginForm = ({ onLoginSuccess, onCreateAccount }) => {
           <span className="text-gray-500 font-medium">OR</span>
           <div className="border-t border-gray-300 flex-grow ml-3"></div>
         </div>
-        
-        {/* <div className="space-y-4">
-          <button 
-            onClick={handleFBLogin} 
-            className="w-full bg-[#1877F2] text-white py-3 rounded-md transition-colors duration-300 hover:bg-[#166FE5] focus:outline-none focus:ring-2 focus:ring-[#1877F2] focus:ring-offset-2"
-          >
-            Log in with Facebook
-          </button> */}
           <button 
             onClick={onCreateAccount} 
             className="w-full bg-gray-200 text-gray-800 py-3 rounded-md transition-colors duration-300 hover:bg-gray-300 focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
@@ -97,7 +71,7 @@ const LoginForm = ({ onLoginSuccess, onCreateAccount }) => {
 }
 
 LoginForm.propTypes = {
-  onLoginSuccess: PropTypes.func.isRequired,
+  // onLoginSuccess: PropTypes.func.isRequired,
   onCreateAccount: PropTypes.func.isRequired
 };
 

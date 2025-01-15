@@ -6,9 +6,12 @@ import { MdDelete, MdHistory } from "react-icons/md";
 import Chatbot from "./Chatbot.jsx";
 import { LuBotMessageSquare } from "react-icons/lu";
 import { useNavigate } from "react-router-dom"; // Assuming you are using React Router
+import { useGlobalContext } from "./GlobalProvider";
 
 
 const AddTask = () => {
+  const { globalVariable } = useGlobalContext();
+
   const [tasks, setTasks] = useState([]);
   const [fieldsVisible, setFieldsVisible] = useState(false);
   const [taskDescription, setTaskDescription] = useState("");
@@ -29,19 +32,26 @@ const AddTask = () => {
     navigate("/"); // Redirect to login page
   };
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const response = await fetch("http://localhost:5000/task");
-        const data = await response.json();
-        setTasks(data);
-      } catch (error) {
-        console.error("Error fetching data: ", error);
-      }
-    };
+    useEffect(() => {
+        const fetchData = async () => {
+            if (!globalVariable.user || !globalVariable.user.id) {
+                console.log("User ID is not available. Skipping fetch.");
+                return; // Exit early if user ID is not available
+            }
 
-    fetchData();
-  }, []);
+            try {
+                const response = await fetch(`http://localhost:5000/task/${globalVariable.user.id}`);
+                const data = await response.json();
+                // Assuming you have a way to set tasks here
+                console.log("Fetched tasks:", data);
+            } catch (error) {
+                console.error("Error fetching data: ", error);
+            }
+        };
+
+        fetchData();
+    }, [globalVariable.user?.id]);
+  
 
   const handleSaveBtn = async () => {
     if (taskDescription && dueDate) {
@@ -62,7 +72,7 @@ const AddTask = () => {
 
         if (response.ok) {
           const savedTask = await response.json();
-          setTasks([...tasks, savedTask]);
+          setGlobalVariable((prev) => ({ ...prev, tasks: [...prev.tasks, savedTask] }));
           setFieldsVisible(false);
           setTaskDescription("");
           setDueDate("");
@@ -86,8 +96,8 @@ const AddTask = () => {
       });
 
       if (response.ok) {
-        const updatedTasks = tasks.filter((task) => task.task_id !== taskId);
-        setTasks(updatedTasks);
+        const updatedTasks = globalVariable.tasks.filter((task) => task.task_id !== taskId);
+        setGlobalVariable((prev) => ({ ...prev, tasks: updatedTasks }));
       } else {
         alert("Failed to delete");
       }
@@ -182,9 +192,9 @@ const AddTask = () => {
       });
 
       if (response.ok) {
-        const updatedTasks = tasks.filter((task) => task.task_id !== taskId);
+        const updatedTasks = globalVariabletasks.filter((task) => task.task_id !== taskId);
         window.location.reload();
-        setTasks(updatedTasks);
+        setGlobalVariable((prev) => ({ ...prev, tasks: updatedTasks }));
       } else {
         alert("Failed to mark task as complete.");
       }
@@ -195,10 +205,12 @@ const AddTask = () => {
   };
 
   const handleEditBtn = (task) => {
+    const formattedDate = new Date(task.task_due_date).toLocaleDateString("en-CA");
+
     setIsEditing(true);
     setSelectedTask(task);
     setTaskDescription(task.task_desc);
-    setDueDate(task.task_due_date.split("T")[0]);
+    setDueDate(formattedDate);
     setTaskStatus(task.task_status);
     setFieldsVisible(true);
   };
@@ -220,7 +232,7 @@ const AddTask = () => {
     setIsHistoryVisible(!isHistoryVisible); // Toggle history visibility
   };
 
-  const displayTasks = isHistoryVisible ? historyTasks : tasks;
+  const displayTasks = isHistoryVisible ? historyTasks : globalVariable.tasks;
 
 
   return (

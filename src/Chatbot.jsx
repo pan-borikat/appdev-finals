@@ -17,11 +17,7 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
       📝Create <taskdesc> <duedate> 
       ex: "Create 3km jog 2025-01-12"
 
-      📝Show tasks due <time triad> 
-      ex: "Show tasks due yesterday"
-
-      🗑️Delete <taskname> task 
-      ex: "Delete prepare for meeting task"
+      📝Show tasks - shows all the current task of the user
 
       Type in "Show commands" in case you forgot the commands.
       `,
@@ -51,12 +47,12 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
         }
 
         const tasks = await response.json();
-        const tasksMessage = {
-          role: "bot",
-          text: "Here are your current tasks:\n" + tasks.map((task) => `${task.task_desc} (Due: ${new Date(task.task_due_date).toLocaleDateString()})`).join("\n"),
-          timestamp: new Date(),
-        };
-        setChatHistory((prev) => [...prev, tasksMessage]);
+        // const tasksMessage = {
+        //   role: "bot",
+        //   text: "Here are your current tasks:\n" + tasks.map((task) => `${task.task_desc} (Due: ${new Date(task.task_due_date).toLocaleDateString()})`).join("\n"),
+        //   timestamp: new Date(),
+        // };
+        // setChatHistory((prev) => [...prev, tasksMessage]);
       } catch (error) {
         console.error("Error fetching tasks:", error);
         const errorMessage = {
@@ -116,11 +112,9 @@ const Chatbot = ({ isChatbotVisible, setIsChatbotVisible }) => {
       📝Create <taskdesc> <duedate> 
       ex: "Create 3km jog 2025-01-12"
 
-      📝Show tasks due <time triad> 
-      ex: "Show tasks due yesterday"
+      📝Show tasks - shows all the current task of the user
 
-      🗑️Delete <taskname> task 
-      ex: "Delete prepare for meeting task"`,
+      `,
       timestamp: new Date(),
     };
     setChatHistory((prev) => [...prev, commands]);
