@@ -369,7 +369,7 @@ const AddTask = () => {
                   className="w-full p-2 h-32 rounded resize-none bg-white text-[#6e4658]"
                 />
               </div>
-              {/* <div>
+              <div>
                 <p className="text-white mb-1">Status</p>
                 <select
                   className="w-full p-2 rounded bg-white text-[#6e4658]"
@@ -380,7 +380,7 @@ const AddTask = () => {
                   <option value="In Progress">In Progress</option>
                   <option value="Completed">Completed</option>
                 </select>
-              </div> */}
+              </div>
 
               <div className="flex justify-end gap-4 mt-6">
                 <button
