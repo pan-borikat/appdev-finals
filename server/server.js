@@ -3,6 +3,7 @@ const nodemailer = require('nodemailer');
 const dotenv = require('dotenv');
 const cors = require('cors');
 const { Pool } = require('pg')
+const jwt = require('jsonwebtoken')
 
 dotenv.config();
 
@@ -35,15 +36,65 @@ pool.connect()
         console.error('Error connecting to DB: ', err)
     });
 
+// Middleware to authenticate JWT
+const authenticateToken = (req, res, next) => {
+    const token = req.headers['authorization'];
+    if (!token) {
+        return res.status(401).json({ error: 'Access denied, no token provided' });
+    }
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'Appdev_VATask_ai25');
+        req.user = decoded;
+        next();
+    } catch (error) {
+        res.status(403).json({ error: 'Invalid token' });
+    }
+};
+
+// log in 
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        // Check if user exists in the database
+        const userResult = await pool.query(
+            "SELECT * FROM users WHERE username = $1 AND password = $2",
+            [username, password]
+        );
+
+        if (userResult.rows.length === 0) {
+            return res.status(401).json({ error: 'Invalid username or password' });
+        }
+
+        const user = userResult.rows[0];
+
+        // Generate JWT token
+        const token = jwt.sign(
+            { userId: user.user_id, username: user.username },
+            process.env.JWT_SECRET || 'Appdev_VATask_ai25',
+            { expiresIn: '24h' }
+        );
+
+        res.status(200).json({ token, user: { id: user.user_id, username: user.username } });
+    } catch (error) {
+        console.error("Error during login: ", error);
+        res.status(500).json({ error: error.message });
+    }
+});
 
 // create
-app.post('/api/task', async(req, res) => {
-    const { task_desc, task_due_date, task_status } = req.body;
+app.post('/api/task', async (req, res) => {
+    const { user_id, task_desc, task_due_date, task_status } = req.body;
+
+    if (!user_id) {
+        return res.status(400).json({ error: "User ID is required" });
+    }
 
     try {
         const newTask = await pool.query(
-            "INSERT INTO task (task_desc, task_due_date, task_status) VALUES ($1, $2, $3) RETURNING *",
-            [task_desc, task_due_date, task_status]
+            "INSERT INTO task (user_id, task_desc, task_due_date, task_status) VALUES ($1, $2, $3, $4) RETURNING *",
+            [user_id, task_desc, task_due_date, task_status]
         );
 
         res.status(201).json(newTask.rows[0]);
@@ -52,6 +103,7 @@ app.post('/api/task', async(req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 
 //fetch
@@ -224,21 +276,39 @@ app.get('/task/history', async (req, res) => {
 
 
 // create account
-app.post('/signup', async (req, res) =>{
-    const { firstName, lastName, email, bday, username, password } = req.body;
+app.post('/signup', async (req, res) => {
+    const { firstName, lastName, bday, email, username, password } = req.body;
     try {
-        const newUser = await pool.query(
-            "INSERT INTO users (fname, lname, email, bday, username, password) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-            [ firstName, lastName, email, bday, username, password ]
+        // Check if email or username already exists
+        const existingUser = await pool.query(
+            `SELECT * FROM users WHERE email = $1 OR username = $2`,
+            [email, username]
         );
 
-         res.status(201).json(newUser.rows[0]);
+        if (existingUser.rows.length > 0) {
+            return res.status(400).json({ error: 'Email or Username already taken' });
+        }
+        // Save user to the database
+        const result = await pool.query(
+            `INSERT INTO users (fname, lname, email, bday, username, password)
+             VALUES ($1, $2, $3, $4, $5, $6)
+             RETURNING *`,
+            [firstName, lastName, email, bday, username, password]
+        );
+        const user = result.rows[0]; // Extract the user data from the result
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'Appdev_VATask_ai25', { expiresIn: '24h' });
+        res.status(201).json({ token, user });
     } catch (error) {
-        console.error("Error creating account: ", error);
-        res.status(500).json({ error: error.message });
+        console.error('Error during user registration:', error);
+        res.status(500).json({ 
+            error: 'User registration failed',
+            message: error.message,
+            stack: error.stack
+        });
     }
 });
 
 app.listen(port, () => {
-    console.log('Server is running on port ${port}');
-});
+    console.log('Server is running on port', port);
+  });
+  

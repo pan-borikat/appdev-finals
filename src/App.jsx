@@ -3,6 +3,8 @@ import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import LogIn from "./LogIn";
 import AddTask from "./AddTask";
 import SignUp from "./SignUp";
+import { AuthProvider } from './Auth'; // Import AuthProvider
+
 
 function App() {
     const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -23,6 +25,7 @@ function App() {
     };
 
     return (
+        <AuthProvider>
         <Router>
             <Routes>
                 <Route path="/signup" element={<SignUp onSignUpSuccess={handleSignUpSuccess} />} />
@@ -33,11 +36,15 @@ function App() {
                     ) : showSignUp ? (
                         <SignUp onSignUpSuccess={handleSignUpSuccess} />
                     ) : (
-                        <LogIn onLoginSuccess={handleLoginSuccess} onCreateAccount={handleCreateAccount} />
+                        <LogIn 
+                            onLoginSuccess={handleLoginSuccess} 
+                            onCreateAccount={handleCreateAccount} 
+                        />
                     )
                 } />
             </Routes>
         </Router>
+        </AuthProvider>
     );
 }
 

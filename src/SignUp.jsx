@@ -32,11 +32,11 @@ const SignUp = ({ onSignUpSuccess }) => {
                 email: formData.email,
                 code: code,
             });
-            setVerificationStatus('Verification code sent');
+            setVerificationStatus('Verification code sent. Check your email.');
             setShowVerificationInput(true);
         } catch (error) {
-            console.error('Error sending email:', error);
-            setVerificationStatus('Error sending verification email');
+            console.error('Error sending verification email:', error);
+            setVerificationStatus('Error sending verification email. Try again later.');
         }
     };
 
@@ -44,8 +44,7 @@ const SignUp = ({ onSignUpSuccess }) => {
         if (formData.verificationCode === generatedCode) {
             setIsVerified(true);
             setVerificationStatus('Email verified successfully!');
-
-            // Send sign-up data to the backend and store it in the database
+    
             try {
                 const response = await axios.post('http://localhost:5000/signup', {
                     firstName: formData.firstName,
@@ -55,19 +54,19 @@ const SignUp = ({ onSignUpSuccess }) => {
                     username: formData.username,
                     password: formData.password,
                 });
-
-                console.log('User created:', response.data.user);
+    
+                const { token } = response.data;
+                localStorage.setItem('jwtToken', token);
                 onSignUpSuccess();
-                navigate('/addtask'); // Redirect to the next page after successful sign-up
+                navigate('/addtask');
             } catch (error) {
-                console.error('Error creating user:', error);
-                setVerificationStatus('Error creating user');
+                console.error('Error creating user:', error.response ? error.response.data : error);
+                setVerificationStatus('Error creating user. Please try again.');
             }
         } else {
-            setVerificationStatus('Invalid verification code.');
+            setVerificationStatus('Invalid verification code. Please try again.');
         }
     };
-
     return (
         <div className="bg-gradient-to-br from-[#915f78] to-[#882054] min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-2xl">
