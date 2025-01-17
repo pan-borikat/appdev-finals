@@ -38,19 +38,15 @@ pool.connect()
 
 // Middleware to authenticate JWT
 const authenticateToken = (req, res, next) => {
-    const token = req.headers['authorization'];
-    if (!token) {
-        return res.status(401).json({ error: 'Access denied, no token provided' });
-    }
-
-    try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'Appdev_VATask_ai25');
-        req.user = decoded;
-        next();
-    } catch (error) {
-        res.status(403).json({ error: 'Invalid token' });
-    }
-};
+    const token = req.headers["authorization"]?.split(" ")[1];
+    if (!token) return res.status(401).json({ error: "Access token is missing." });
+  
+    jwt.verify(token, process.env.JWT_SECRET || 'Appdev_VATask_ai25', (err, user) => {
+      if (err) return res.status(403).json({ error: "Invalid token." });
+      req.user = user; // Attach the user object (e.g., { id: userId, email, etc. })
+      next();
+    });
+  };
 
 // log in 
 app.post('/login', async (req, res) => {
@@ -105,19 +101,30 @@ app.post('/api/task', async (req, res) => {
 });
 
 
-
-//fetch
-app.get('/task', async(req, res) => {
-    try{
-        const tasks = await pool.query("SELECT * FROM task ORDER BY created_at DESC");
-        
-        res.status(200).json(tasks.rows);
-    } catch(error){
-        console.error("Error fetching tasks: ", error);
-        res.status(500).json({ error: error.message });
+// fetch
+app.get('/task', authenticateToken, async (req, res) => {
+    const userId = req.user.id; // User ID from token (set in authenticateToken middleware)
+  
+    try {
+      // Fetch tasks for the logged-in user only
+      const tasks = await pool.query(
+        `SELECT * FROM tasks WHERE user_id = $1 ORDER BY task_due_date ASC`,
+        [userId]
+      );
+  
+      // Check if tasks exist
+      if (tasks.rows.length === 0) {
+        return res.status(404).json({ message: "No tasks found for this user." });
+      }
+  
+      res.status(200).json(tasks.rows);
+    } catch (error) {
+      console.error("Error fetching tasks: ", error);
+      res.status(500).json({ error: "Failed to fetch tasks. Please try again later." });
     }
-})
-
+  });
+  
+  
 
 //update
 app.put('/task/:task_id', async(req, res) => {
@@ -261,7 +268,7 @@ app.put('/task/:task_id/complete', async (req, res) => {
 
 
 // Fetch history tasks
-app.get('/task/history', async (req, res) => {
+app.get('/task/history',async (req, res) => {
     try {
         const historyTasks = await pool.query(
             "SELECT * FROM task WHERE task_is_history = TRUE ORDER BY created_at DESC"
@@ -276,7 +283,7 @@ app.get('/task/history', async (req, res) => {
 
 
 // create account
-app.post('/signup', async (req, res) => {
+app.post('/signup',async (req, res) => {
     const { firstName, lastName, bday, email, username, password } = req.body;
     try {
         // Check if email or username already exists
@@ -296,8 +303,19 @@ app.post('/signup', async (req, res) => {
             [firstName, lastName, email, bday, username, password]
         );
         const user = result.rows[0]; // Extract the user data from the result
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'Appdev_VATask_ai25', { expiresIn: '24h' });
-        res.status(201).json({ token, user });
+// const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'Appdev_VATask_ai25', { expiresIn: '24h' });
+
+res.status(201).json({
+    // token,
+    user: {
+        id: user.id,
+        firstName: user.fname,
+        lastName: user.lname,
+        email: user.email,
+        username: user.username,
+    },
+});
+
     } catch (error) {
         console.error('Error during user registration:', error);
         res.status(500).json({ 

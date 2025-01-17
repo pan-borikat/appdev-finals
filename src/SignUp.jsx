@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from './Auth';
+
 
 const SignUp = ({ onSignUpSuccess }) => {
     const [formData, setFormData] = useState({
@@ -12,6 +14,7 @@ const SignUp = ({ onSignUpSuccess }) => {
         password: '',
         verificationCode: ''
     });
+    const { signup } = useAuth();
     const [generatedCode, setGeneratedCode] = useState('');
     const [isVerified, setIsVerified] = useState(false);
     const [showVerificationInput, setShowVerificationInput] = useState(false);
@@ -46,6 +49,7 @@ const SignUp = ({ onSignUpSuccess }) => {
             setVerificationStatus('Email verified successfully!');
     
             try {
+                console.log('Sending form data:', formData); // Debugging log
                 const response = await axios.post('http://localhost:5000/signup', {
                     firstName: formData.firstName,
                     lastName: formData.lastName,
@@ -55,18 +59,22 @@ const SignUp = ({ onSignUpSuccess }) => {
                     password: formData.password,
                 });
     
-                const { token } = response.data;
-                localStorage.setItem('jwtToken', token);
+                const { token, user } = response.data;
+                console.log('User created successfully:', user); // Debugging log
+    
+                signup(user, token);
                 onSignUpSuccess();
                 navigate('/addtask');
             } catch (error) {
-                console.error('Error creating user:', error.response ? error.response.data : error);
+                console.error('Error creating user:', error.response ? error.response.data : error.message);
                 setVerificationStatus('Error creating user. Please try again.');
             }
         } else {
             setVerificationStatus('Invalid verification code. Please try again.');
         }
     };
+    
+    
     return (
         <div className="bg-gradient-to-br from-[#915f78] to-[#882054] min-h-screen flex items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
             <div className="w-full max-w-md bg-white p-8 rounded-lg shadow-2xl">
