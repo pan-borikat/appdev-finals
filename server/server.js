@@ -39,15 +39,32 @@ pool.connect()
 // Middleware to authenticate JWT
 const authenticateToken = (req, res, next) => {
     const token = req.headers["authorization"]?.split(" ")[1];
-    if (!token) return res.status(401).json({ error: "Access token is missing." });
+    if (!token) {
+      return res.status(401).json({ error: "Access token is missing." });
+    }
+  
+    console.log("Verifying token:", token); // Log the token for debugging (don't log in production)
   
     jwt.verify(token, process.env.JWT_SECRET || 'Appdev_VATask_ai25', (err, user) => {
-      if (err) return res.status(403).json({ error: "Invalid token." });
-      req.user = user; // Attach the user object (e.g., { id: userId, email, etc. })
+      if (err) {
+        console.error("JWT verification failed:", err.message); // Log the error message
+        return res.status(403).json({ error: "Invalid token." });
+      }
+  
+      // Check if user data is missing or malformed
+      if (!user || (!user.id && !user.userId)) {
+        console.error("Invalid token payload:", user); // Log the user object
+        return res.status(403).json({ error: "Token is missing user data." });
+      }
+  
+      // Ensure user.id or user.userId is available
+      req.user = user;
+      console.log("Decoded token user:", req.user); // Log the decoded user for debugging
       next();
     });
   };
 
+  
 // log in 
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
@@ -79,6 +96,7 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// Create Task
 // create
 app.post('/api/task', async (req, res) => {
     const { user_id, task_desc, task_due_date, task_status } = req.body;
@@ -98,33 +116,45 @@ app.post('/api/task', async (req, res) => {
         console.error("Error creating task: ", error);
         res.status(500).json({ error: error.message });
     }
-});
+}); 
 
-
-// fetch
+// Fetch tasks
 app.get('/task', authenticateToken, async (req, res) => {
-    const userId = req.user.id; // User ID from token (set in authenticateToken middleware)
+    const { userId } = req.user || {}; // Extract userId from the token payload
+  
+    if (!userId) {
+      console.error("User ID is missing from token:", req.user);
+      return res.status(400).json({ error: 'User ID is missing from token.' });
+    }
   
     try {
-      // Fetch tasks for the logged-in user only
-      const tasks = await pool.query(
-        `SELECT * FROM tasks WHERE user_id = $1 ORDER BY task_due_date ASC`,
+      console.log("Fetching tasks for user ID:", userId);
+  
+      // Corrected SQL query with quotes
+      const result = await pool.query(
+        'SELECT * FROM task WHERE user_id = $1',
         [userId]
       );
   
-      // Check if tasks exist
-      if (tasks.rows.length === 0) {
+      if (result.rows.length === 0) {
+        console.log("No tasks found for user:", userId);
         return res.status(404).json({ message: "No tasks found for this user." });
       }
   
-      res.status(200).json(tasks.rows);
+      // Send the tasks as response
+      res.status(200).json(result.rows);
     } catch (error) {
-      console.error("Error fetching tasks: ", error);
+      console.error("Error fetching tasks:", {
+        userId,
+        message: error.message,
+        stack: error.stack,
+      });
       res.status(500).json({ error: "Failed to fetch tasks. Please try again later." });
     }
   });
-  
-  
+
+
+
 
 //update
 app.put('/task/:task_id', async(req, res) => {
@@ -246,8 +276,9 @@ app.post('/send-verification-email', (req, res) => {
 });
 
 // Mark a task as complete and move to history
-app.put('/task/:task_id/complete', async (req, res) => {
+app.put('/task/:task_id/complete',async (req, res) => {
     const { task_id } = req.params;
+    
 
     try {
         const updatedTask = await pool.query(
@@ -268,10 +299,18 @@ app.put('/task/:task_id/complete', async (req, res) => {
 
 
 // Fetch history tasks
-app.get('/task/history',async (req, res) => {
+app.get('/task/history',authenticateToken, async (req, res) => {
+    const { userId } = req.user || {}; // Extract userId from the token payload
+  
+    if (!userId) {
+      console.error("User ID is missing from token:", req.user);
+      return res.status(400).json({ error: 'User ID is missing from token.' });
+    }
+
     try {
         const historyTasks = await pool.query(
-            "SELECT * FROM task WHERE task_is_history = TRUE ORDER BY created_at DESC"
+            "SELECT * FROM task WHERE task_is_history = TRUE AND user_id = $1 ORDER BY created_at DESC",
+            [userId]
         );
 
         res.status(200).json(historyTasks.rows);
@@ -280,6 +319,7 @@ app.get('/task/history',async (req, res) => {
         res.status(500).json({ error: error.message });
     }
 });
+
 
 
 // create account
