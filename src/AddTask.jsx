@@ -2,12 +2,30 @@ import React, { useEffect, useState, useCallback } from "react"
 import { FaPlus, FaRegUser } from "react-icons/fa"
 import { IoCheckmarkDoneCircleSharp } from "react-icons/io5"
 import { RiEditCircleFill } from "react-icons/ri"
+import { IoNotificationsSharp } from "react-icons/io5"
 import { MdDelete, MdHistory } from "react-icons/md"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import { useAuth } from "./Auth"
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "date-fns"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
+
+const checkTaskStatus = (task) => {
+  const today = new Date()
+  const dueDate = new Date(task.task_due_date)
+  const timeDiff = dueDate.getTime() - today.getTime()
+  const daysDiff = Math.ceil(timeDiff / (1000 * 3600 * 24))
+
+  if (daysDiff < 0) {
+    return "overdue"
+  } else if (daysDiff === 0) {
+    return "due-today"
+  } else if (daysDiff === 1) {
+    return "due-tomorrow"
+  } else {
+    return "upcoming"
+  }
+}
 
 const getContrastColor = (hexColor) => {
   const r = Number.parseInt(hexColor.slice(1, 3), 16)
@@ -162,8 +180,9 @@ const TaskCalendar = ({ tasks, onTaskUpdate }) => {
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className={`border-b border-gray-300 p-2 relative flex flex-col min-h-[60px] ${snapshot.isDraggingOver ? "bg-gray-100" : ""
-                        }`}
+                      className={`border-b border-gray-300 p-2 relative flex flex-col min-h-[60px] ${
+                        snapshot.isDraggingOver ? "bg-gray-100" : ""
+                      }`}
                     >
                       <div className="text-gray-700 font-medium mb-2">{format(day, "d")}</div>
                       <div className="flex flex-col space-y-1">
@@ -178,8 +197,9 @@ const TaskCalendar = ({ tasks, onTaskUpdate }) => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`task-event rounded-md p-2 text-black font-normal ${getTaskColor(task.task_status)} ${snapshot.isDragging ? "opacity-50" : ""
-                                  }`}
+                                className={`task-event rounded-md p-2 text-black font-normal ${getTaskColor(task.task_status)} ${
+                                  snapshot.isDragging ? "opacity-50" : ""
+                                }`}
                               >
                                 <div className="flex items-center justify-between">
                                   <span>{task.task_desc}</span>
@@ -244,15 +264,14 @@ const AddTask = () => {
   const [isProfileDropdownVisible, setIsProfileDropdownVisible] = useState(false)
   const [isHistoryVisible, setIsHistoryVisible] = useState(false)
   const [historyTasks, setHistoryTasks] = useState([])
-  // const [isLoading, setIsLoading] = useState(true)
+  const [notifications, setNotifications] = useState([])
+  const [overdueTasks, setOverdueTasks] = useState([])
+  const [isNotificationVisible, setIsNotificationVisible] = useState(false) // Added state
   const { user } = useAuth()
   const navigate = useNavigate()
 
-
-  // Define callbacks
   const fetchUserTasks = useCallback(async () => {
     if (!user) {
-      // setIsLoading(false)
       return
     }
 
@@ -264,7 +283,6 @@ const AddTask = () => {
     }
 
     try {
-      // setIsLoading(true)
       const response = await axios.get(`http://localhost:5000/task`, {
         headers: {
           "Content-Type": "application/json",
@@ -288,7 +306,6 @@ const AddTask = () => {
     }
   }, [user, navigate])
 
-  // Authentication check effect
   useEffect(() => {
     const token = localStorage.getItem("token")
     if (!token) {
@@ -296,7 +313,6 @@ const AddTask = () => {
     }
   }, [navigate])
 
-  // Task fetching effect
   useEffect(() => {
     fetchUserTasks()
 
@@ -310,27 +326,47 @@ const AddTask = () => {
     }
   }, [fetchUserTasks])
 
-  // History tasks effect
   useEffect(() => {
     const fetchHistory = async () => {
-        if (isHistoryVisible) {
-            try {
-                const response = await axios.get("http://localhost:5000/task/history", {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem("token")}`,
-                    },
-                });
-                setHistoryTasks(response.data); // Assuming you set history tasks in a state
-            } catch (error) {
-                console.error("Error fetching history tasks: ", error);
-            }
+      if (isHistoryVisible) {
+        try {
+          const response = await axios.get("http://localhost:5000/task/history", {
+            headers: {
+              Authorization: `Bearer ${localStorage.getItem("token")}`,
+            },
+          })
+          setHistoryTasks(response.data)
+        } catch (error) {
+          console.error("Error fetching history tasks: ", error)
         }
-    };
+      }
+    }
 
-    fetchHistory();
-}, [isHistoryVisible]); // Fetch history tasks only when visibility is toggled
+    fetchHistory()
+  }, [isHistoryVisible])
 
+  useEffect(() => {
+    const checkNotifications = () => {
+      const newNotifications = []
+      const newOverdueTasks = []
 
+      tasks.forEach((task) => {
+        const status = checkTaskStatus(task)
+        if (status === "due-today") {
+          newNotifications.push(`Task "${task.task_desc}" is due today!`)
+        } else if (status === "due-tomorrow") {
+          newNotifications.push(`Task "${task.task_desc}" is due tomorrow!`)
+        } else if (status === "overdue") {
+          newOverdueTasks.push(task)
+        }
+      })
+
+      setNotifications(newNotifications)
+      setOverdueTasks(newOverdueTasks)
+    }
+
+    checkNotifications()
+  }, [tasks])
 
   const handleTaskUpdate = async (updatedTask) => {
     try {
@@ -508,14 +544,6 @@ const AddTask = () => {
     setIsHistoryVisible(!isHistoryVisible)
   }
 
-  // if (isLoading) {
-  //   return (
-  //     <div className="min-h-screen bg-[#dcc5d3] flex items-center justify-center">
-  //       <div className="text-[#6e4658] text-xl">Loading tasks...</div>
-  //     </div>
-  //   )
-  // }
-
   const displayTasks = (isHistoryVisible ? historyTasks : tasks).sort((a, b) => getTaskScore(b) - getTaskScore(a))
 
   return (
@@ -524,9 +552,21 @@ const AddTask = () => {
         <h1 className="text-white text-2xl ml-4  font-semibold">VATask</h1>
         <div className="relative flex space-x-4">
           <button
+            className="bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full shadow-lg hover:bg-[#f6f4d2] hover:text-[#915f78] hover:scale-105 transform transition-all duration-300"
+            onClick={() => setIsNotificationVisible(!isNotificationVisible)}
+          >
+            <IoNotificationsSharp />
+            {notifications.length + overdueTasks.length > 0 && (
+              <span className="absolute top-0 right-0 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                {notifications.length + overdueTasks.length}
+              </span>
+            )}
+          </button>
+          <button
             onClick={toggleHistory}
-            className={`bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full shadow-lg hover:bg-[#f6f4d2] hover:text-[#915f78] hover:scale-105 transform transition-all duration-300 ${isHistoryVisible ? "bg-[#f6f4d2] text-[#915f78]" : ""
-              }`}
+            className={`bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full shadow-lg hover:bg-[#f6f4d2] hover:text-[#915f78] hover:scale-105 transform transition-all duration-300 ${
+              isHistoryVisible ? "bg-[#f6f4d2] text-[#915f78]" : ""
+            }`}
           >
             <MdHistory className="text-xl" />
           </button>
@@ -558,12 +598,15 @@ const AddTask = () => {
               {isHistoryVisible ? "Completed Tasks" : "To-Do List"}
             </h2>
             {!isHistoryVisible && (
-              <button
-                onClick={handleAddBtn}
-                className="text-white bg-gradient-to-r from-[#915f78] to-[#882054] p-2 rounded-full"
-              >
-                <FaPlus />
-              </button>
+              <div className="flex items-center">
+                <span className="text-white mr-4">Overdue Tasks: {overdueTasks.length}</span>
+                <button
+                  onClick={handleAddBtn}
+                  className="text-white bg-gradient-to-r from-[#915f78] to-[#882054] p-2 rounded-full"
+                >
+                  <FaPlus />
+                </button>
+              </div>
             )}
           </div>
 
@@ -577,14 +620,15 @@ const AddTask = () => {
                   <div className="flex-1 flex items-center">
                     <div className="flex items-center space-x-2 ml-4">
                       <div
-                        className={`px-3 py-1 rounded-md text-xs font-medium mb-4 mt-3 mr-4 ${task.task_status?.toLowerCase() === "urgent"
-                          ? "bg-red-600 text-red-100"
-                          : task.task_status?.toLowerCase() === "high"
-                            ? "bg-yellow-200 text-yellow-800"
-                            : task.task_status?.toLowerCase() === "normal"
-                              ? "bg-blue-200 text-blue-800"
-                              : "bg-purple-200 text-purple-800"
-                          }`}
+                        className={`px-3 py-1 rounded-md text-xs font-medium mb-4 mt-3 mr-4 ${
+                          task.task_status?.toLowerCase() === "urgent"
+                            ? "bg-red-600 text-red-100"
+                            : task.task_status?.toLowerCase() === "high"
+                              ? "bg-yellow-200 text-yellow-800"
+                              : task.task_status?.toLowerCase() === "normal"
+                                ? "bg-blue-200 text-blue-800"
+                                : "bg-purple-200 text-purple-800"
+                        }`}
                       >
                         {new Date(task.task_due_date)
                           .toLocaleDateString("en-US", {
@@ -595,14 +639,6 @@ const AddTask = () => {
                           .replace(/\//g, "-")}
                       </div>
                       <p className="text-white text-sm ml-5 mr-4 mb-4 mt-3">{task.task_desc}</p>
-
-                      {/* {task.task_tag && (
-                        <div
-                          className={`px-2 py-1 rounded-md text-xs font-medium mb-4 mt-3 ${task.tag_color} text-gray-800`}
-                        >
-                          {task.task_tag}
-                        </div>
-                      )} */}
                     </div>
                   </div>
 
@@ -630,7 +666,6 @@ const AddTask = () => {
                       </>
                     )}
                   </div>
-
                 </div>
               ))}
             </div>
@@ -640,10 +675,37 @@ const AddTask = () => {
         <TaskCalendar tasks={tasks} onTaskUpdate={handleTaskUpdate} />
       </div>
 
+      {(notifications.length > 0 || overdueTasks.length > 0) &&
+        isNotificationVisible && ( // Added isNotificationVisible check
+          <div className="notif-parent fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="notif-subparent bg-[#6e4658] rounded-xl w-full max-w-md p-6 shadow-xl">
+              <h3 className="text-xl text-white mb-4">Notifications</h3>
+              <div className="notif-con max-h-60 overflow-y-auto">
+                {notifications.map((notification, index) => (
+                  <p key={`notification-${index}`} className="text-white mb-2">
+                    {notification}
+                  </p>
+                ))}
+                {overdueTasks.map((task, index) => (
+                  <p key={`overdue-${index}`} className="mb-2 text-red-300">
+                    Overdue: {task.task_desc} (Due: {new Date(task.task_due_date).toLocaleDateString()})
+                  </p>
+                ))}
+              </div>
+              <button
+                onClick={() => setIsNotificationVisible(false)}
+                className="mt-4 px-4 py-2 bg-[#dcc5d3] text-[#6e4658] rounded-md hover:bg-[#c6a0b6] hover:text-white transition-all duration-200 transform hover:scale-105"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        )}
+
       {fieldsVisible && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-[#6e4658] rounded-xl w-full max-w-md p-6 shadow-xl">
-            <h2 className="text-2xl text-white mb-4">{isEditing ? "Edit Task" : "Add Task"}</h2>
+            <h2 className=" text-2xl text-white mb-4">{isEditing ? "Edit Task" : "Add Task"}</h2>
             <div className="space-y-4">
               <div>
                 <p className="text-white mb-1">Due Date</p>
@@ -678,29 +740,6 @@ const AddTask = () => {
                   <option value="Low">Low</option>
                 </select>
               </div>
-              {/* <div>
-                <p className="text-white mb-1">Tag</p>
-                <input
-                  type="text"
-                  className="w-full p-2 rounded bg-white text-[#6e4658]"
-                  value={taskTag}
-                  onChange={(e) => setTaskTag(e.target.value)}
-                  placeholder="Enter tag (e.g., personal, work)"
-                />
-              </div>
-              <div>
-                <p className="text-white mb-1">Tag Color</p>
-                <div className="flex space-x-2">
-                  {["bg-red-200", "bg-yellow-200", "bg-blue-200", "bg-purple-200"].map((color) => (
-                    <button
-                      key={color}
-                      className={`w-8 h-8 rounded-full ${color} ${tagColor === color ? "ring-2 ring-white" : ""}`}
-                      onClick={() => setTagColor(color)}
-                      type="button"
-                    />
-                  ))}
-                </div>
-              </div> */}
               <div className="flex justify-end gap-4 mt-6">
                 <button
                   onClick={handleCancelBtn}
@@ -723,5 +762,5 @@ const AddTask = () => {
   )
 }
 
-export default AddTask;
+export default AddTask
 
