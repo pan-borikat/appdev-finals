@@ -43,7 +43,7 @@ const authenticateToken = (req, res, next) => {
       return res.status(401).json({ error: "Access token is missing." });
     }
   
-    console.log("Verifying token:", token); // Log the token for debugging (don't log in production)
+    // console.log("Verifying token:", token); // Log the token for debugging (don't log in production)
   
     jwt.verify(token, process.env.JWT_SECRET || 'Appdev_VATask_ai25', (err, user) => {
       if (err) {
@@ -59,10 +59,33 @@ const authenticateToken = (req, res, next) => {
   
       // Ensure user.id or user.userId is available
       req.user = user;
-      console.log("Decoded token user:", req.user); // Log the decoded user for debugging
+      // console.log("Decoded token user:", req.user); // Log the decoded user for debugging
       next();
     });
   };
+
+// Validate token and return user details
+app.get('/api/validate-token', authenticateToken, async (req, res) => {
+  try {
+      const { userId } = req.user; // Extract userId from the decoded token
+
+      // Retrieve user details from the database
+      const userResult = await pool.query(
+          'SELECT user_id, username, fname, lname, email FROM users WHERE user_id = $1',
+          [userId]
+      );
+
+      if (userResult.rows.length === 0) {
+          return res.status(404).json({ error: 'User not found' });
+      }
+
+      const user = userResult.rows[0];
+      res.status(200).json({ user });
+  } catch (error) {
+      console.error('Error validating token:', error.message);
+      res.status(500).json({ error: 'Failed to validate token.' });
+  }
+});
 
   
 // log in 
@@ -84,10 +107,11 @@ app.post('/login', async (req, res) => {
 
         // Generate JWT token
         const token = jwt.sign(
-            { userId: user.user_id, username: user.username },
-            process.env.JWT_SECRET || 'Appdev_VATask_ai25',
-            { expiresIn: '24h' }
-        );
+          { userId: user.user_id }, // Include only necessary data
+          process.env.JWT_SECRET || 'Appdev_VATask_ai25',
+          { expiresIn: '24h' }
+      );
+      
 
         res.status(200).json({ token, user: { id: user.user_id, username: user.username } });
     } catch (error) {
@@ -97,26 +121,27 @@ app.post('/login', async (req, res) => {
 });
 
 // Create Task
-// create
-app.post('/api/task', async (req, res) => {
-    const { user_id, task_desc, task_due_date, task_status } = req.body;
+app.post('/api/task', authenticateToken, async (req, res) => {
+  const { task_desc, task_due_date, task_status } = req.body;
+  const { userId } = req.user;
 
-    if (!user_id) {
-        return res.status(400).json({ error: "User ID is required" });
-    }
+  if (!userId) {
+      return res.status(400).json({ error: "User ID is missing from token." });
+  }
 
-    try {
-        const newTask = await pool.query(
-            "INSERT INTO task (user_id, task_desc, task_due_date, task_status) VALUES ($1, $2, $3, $4) RETURNING *",
-            [user_id, task_desc, task_due_date, task_status]
-        );
+  try {
+      const newTask = await pool.query(
+          "INSERT INTO task (user_id, task_desc, task_due_date, task_status) VALUES ($1, $2, $3, $4) RETURNING *",
+          [userId, task_desc, task_due_date, task_status]
+      );
 
-        res.status(201).json(newTask.rows[0]);
-    } catch (error) {
-        console.error("Error creating task: ", error);
-        res.status(500).json({ error: error.message });
-    }
-}); 
+      res.status(201).json(newTask.rows[0]);
+  } catch (error) {
+      console.error("Error creating task: ", error);
+      res.status(500).json({ error: error.message });
+  }
+});
+
 
 // Fetch tasks
 app.get('/task', authenticateToken, async (req, res) => {
@@ -126,9 +151,9 @@ app.get('/task', authenticateToken, async (req, res) => {
       console.error("User ID is missing from token:", req.user);
       return res.status(400).json({ error: 'User ID is missing from token.' });
     }
-  
+    // console.log("Fetching tasks for user ID:", userId);
     try {
-      console.log("Fetching tasks for user ID:", userId);
+      
   
       // Corrected SQL query with quotes
       const result = await pool.query(
