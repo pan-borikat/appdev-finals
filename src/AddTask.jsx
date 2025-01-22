@@ -7,8 +7,9 @@ import { MdDelete, MdHistory } from "react-icons/md"
 import { useNavigate } from "react-router-dom"
 import axios from "axios"
 import { useAuth } from "./Auth"
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO } from "date-fns"
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, parseISO, startOfWeek, endOfWeek, isWithinInterval } from "date-fns"
 import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd"
+
 
 const checkTaskStatus = (task) => {
   const today = new Date()
@@ -37,27 +38,31 @@ const getContrastColor = (hexColor) => {
 
 const getTaskScore = (task) => {
   if (!task || !task.task_due_date || !task.task_status) {
-    return 0
+    return 0;
   }
 
-  const currentDate = new Date()
-  const dueDate = new Date(task.task_due_date)
-  const timeDifference = dueDate - currentDate
-  const daysUntilDue = Math.floor(timeDifference / (1000 * 3600 * 24))
+  const dueDate = new Date(task.task_due_date);
+  const currentDate = new Date();
+  const daysUntilDue = Math.max(0, Math.ceil((dueDate - currentDate) / (1000 * 3600 * 24)));
 
+  // Urgency scoring
   const urgencyScore = {
     urgent: 4,
     high: 3,
     normal: 2,
     low: 1,
-  }
+  };
 
-  const urgency = urgencyScore[task.task_status.toLowerCase()] || 0
-  const dueDateScore = Math.max(0, 30 - daysUntilDue)
-  const score = urgency * 10 + dueDateScore
+  const urgency = urgencyScore[task.task_status.toLowerCase()] || 0;
 
-  return score
-}
+  // Normalize scores for better sorting priority
+  const normalizedDueDateScore = daysUntilDue > 30 ? 0 : (30 - daysUntilDue) / 30;
+
+  // Combine urgency and due date scores
+  return urgency * 100 + normalizedDueDateScore * 100; // Weight urgency higher
+};
+
+
 
 const TaskCalendar = ({ tasks, onTaskUpdate }) => {
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -95,15 +100,22 @@ const TaskCalendar = ({ tasks, onTaskUpdate }) => {
   }
 
   const getTasksForCurrentMonth = useCallback(() => {
-    const start = startOfMonth(currentDate)
-    const end = endOfMonth(currentDate)
+    const start = startOfMonth(currentDate);
+    const end = endOfMonth(currentDate);
+
     return tasks
-      .filter((task) => {
-        const taskDate = parseISO(task.task_due_date)
-        return taskDate >= start && taskDate <= end
+      .filter(task => {
+        const taskDate = parseISO(task.task_due_date);
+        return taskDate >= start && taskDate <= end;
       })
-      .sort((a, b) => getTaskScore(b) - getTaskScore(a))
-  }, [currentDate, tasks])
+      .sort((a, b) => {
+        const scoreA = getTaskScore(a);
+        const scoreB = getTaskScore(b);
+        return scoreB - scoreA; // Sort by score descending
+      });
+  }, [currentDate, tasks]);
+
+
 
   const tasksForCurrentMonth = getTasksForCurrentMonth()
   const daysInMonth = eachDayOfInterval({
@@ -180,8 +192,7 @@ const TaskCalendar = ({ tasks, onTaskUpdate }) => {
                     <div
                       {...provided.droppableProps}
                       ref={provided.innerRef}
-                      className={`border-b border-gray-300 p-2 relative flex flex-col min-h-[60px] ${
-                        snapshot.isDraggingOver ? "bg-gray-100" : ""
+                      className={`border-b border-gray-300 p-2 relative flex flex-col min-h-[60px] ${snapshot.isDraggingOver ? "bg-gray-100" : ""
                       }`}
                     >
                       <div className="text-gray-700 font-medium mb-2">{format(day, "d")}</div>
@@ -197,8 +208,7 @@ const TaskCalendar = ({ tasks, onTaskUpdate }) => {
                                 ref={provided.innerRef}
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
-                                className={`task-event rounded-md p-2 text-black font-normal ${getTaskColor(task.task_status)} ${
-                                  snapshot.isDragging ? "opacity-50" : ""
+                                className={`task-event rounded-md p-2 text-black font-normal ${getTaskColor(task.task_status)} ${snapshot.isDragging ? "opacity-50" : ""
                                 }`}
                               >
                                 <div className="flex items-center justify-between">
@@ -267,8 +277,96 @@ const AddTask = () => {
   const [notifications, setNotifications] = useState([])
   const [overdueTasks, setOverdueTasks] = useState([])
   const [isNotificationVisible, setIsNotificationVisible] = useState(false) // Added state
+  const [sortBy, setSortBy] = useState("");
+  const [currentDate, setCurrentDate] = useState(new Date());
+
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  const handleSortChange = (event) => {
+    setSortBy(event.target.value); // Update sort option
+  };
+
+// Function to get tasks for a specific day
+const getTasksByDay = (tasks) => {
+  const currentDate = new Date();
+  const dateStr = currentDate.toLocaleDateString("en-CA").split('T')[0];
+  return tasks.filter(task => {
+    const taskDate = new Date(task.task_due_date).toLocaleDateString("en-CA").split('T')[0];
+    return taskDate === dateStr;
+  }).sort((a, b) => {
+    // Sort by task score (which includes urgency) in descending order
+    return getTaskScore(b) - getTaskScore(a);
+  });
+};
+
+// Function to get tasks for the current week
+const getTasksByWeek = (tasks, weekStartDate) => {
+  const start = startOfWeek(weekStartDate, { weekStartsOn: 1 }); // Week starts on Monday
+  const end = endOfWeek(weekStartDate, { weekStartsOn: 1 });
+  
+  return tasks.filter(task => {
+    const taskDate = new Date(task.task_due_date);
+    return isWithinInterval(taskDate, { start, end });
+  }).sort((a, b) => {
+    // First group by day within the week
+    const dateA = new Date(a.task_due_date);
+    const dateB = new Date(b.task_due_date);
+    const dateDiff = dateA.getTime() - dateB.getTime();
+    
+    if (dateDiff !== 0) return dateDiff;
+    
+    // If same day, sort by task score
+    return getTaskScore(b) - getTaskScore(a);
+  });
+};
+
+// Function to get tasks for the current month
+const getTasksByMonth = (tasks, monthStartDate) => {
+  const start = startOfMonth(monthStartDate);
+  const end = endOfMonth(monthStartDate);
+
+  return tasks.filter(task => {
+    const taskDate = new Date(task.task_due_date);
+    return isWithinInterval(taskDate, { start, end });
+  }).sort((a, b) => {
+    // First group by week
+    const dateA = new Date(a.task_due_date);
+    const dateB = new Date(b.task_due_date);
+    const weekA = Math.floor((dateA.getDate() - 1) / 7);
+    const weekB = Math.floor((dateB.getDate() - 1) / 7);
+    
+    if (weekA !== weekB) return weekA - weekB;
+    
+    // If same week, sort by date
+    const dateDiff = dateA.getTime() - dateB.getTime();
+    if (dateDiff !== 0) return dateDiff;
+    
+    // If same date, sort by task score
+    return getTaskScore(b) - getTaskScore(a);
+  });
+};
+
+// Main filtering function
+const getFilteredTasks = useCallback(() => {
+  const tasksToFilter = isHistoryVisible ? historyTasks : tasks;
+  if (!tasksToFilter.length) return [];
+  
+  switch (sortBy) {
+    case "days":
+      return getTasksByDay(tasksToFilter);
+    case "week":
+      return getTasksByWeek(tasksToFilter, new Date());
+    case "month":
+      return getTasksByMonth(tasksToFilter, new Date());
+    default:
+      // Return all tasks sorted by task score
+      return tasksToFilter.sort((a, b) => getTaskScore(b) - getTaskScore(a));
+  }
+}, [sortBy, tasks, historyTasks, isHistoryVisible]);
+
+
+  const filteredTasks = getFilteredTasks();
 
   const fetchUserTasks = useCallback(async () => {
     if (!user) {
@@ -564,8 +662,7 @@ const AddTask = () => {
           </button>
           <button
             onClick={toggleHistory}
-            className={`bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full shadow-lg hover:bg-[#f6f4d2] hover:text-[#915f78] hover:scale-105 transform transition-all duration-300 ${
-              isHistoryVisible ? "bg-[#f6f4d2] text-[#915f78]" : ""
+            className={`bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full shadow-lg hover:bg-[#f6f4d2] hover:text-[#915f78] hover:scale-105 transform transition-all duration-300 ${isHistoryVisible ? "bg-[#f6f4d2] text-[#915f78]" : ""
             }`}
           >
             <MdHistory className="text-xl" />
@@ -600,6 +697,14 @@ const AddTask = () => {
             {!isHistoryVisible && (
               <div className="flex items-center">
                 <span className="text-white mr-4">Overdue Tasks: {overdueTasks.length}</span>
+                <select className="text-black bg-[#c6a0b6] p-2 rounded-[10px] mr-4 text-[12px]"
+                  value={sortBy}
+                  onChange={handleSortChange}>
+                  <option>Sort by</option>
+                  <option value="days">Day</option>
+                  <option value="week">Week</option>
+                  <option value="month">Month</option>
+                </select>
                 <button
                   onClick={handleAddBtn}
                   className="text-white bg-gradient-to-r from-[#915f78] to-[#882054] p-2 rounded-full"
@@ -612,7 +717,7 @@ const AddTask = () => {
 
           <div className="task-list-container rounded">
             <div className="overflow-y-auto max-h-[500px]   scrollbar-thin scrollbar-thumb-[#6e4658] scrollbar-track-[#6e4658] scrollbar-thumb-rounded">
-              {displayTasks.map((task) => (
+              {filteredTasks.map((task) => (
                 <div
                   key={task.task_id}
                   className="task-row bg-[#6e4658] flex justify-between items-center hover:bg-[#b189a3] transition-all duration-300 relative group "
@@ -620,8 +725,7 @@ const AddTask = () => {
                   <div className="flex-1 flex items-center">
                     <div className="flex items-center space-x-2 ml-4">
                       <div
-                        className={`px-3 py-1 rounded-md text-xs font-medium mb-4 mt-3 mr-4 ${
-                          task.task_status?.toLowerCase() === "urgent"
+                        className={`px-3 py-1 rounded-md text-xs font-medium mb-4 mt-3 mr-4 ${task.task_status?.toLowerCase() === "urgent"
                             ? "bg-red-600 text-red-100"
                             : task.task_status?.toLowerCase() === "high"
                               ? "bg-yellow-200 text-yellow-800"
