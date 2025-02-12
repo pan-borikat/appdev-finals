@@ -193,7 +193,7 @@ const TaskCalendar = ({ tasks, onTaskUpdate }) => {
                       {...provided.droppableProps}
                       ref={provided.innerRef}
                       className={`border-b border-gray-300 p-2 relative flex flex-col min-h-[60px] ${snapshot.isDraggingOver ? "bg-gray-100" : ""
-                      }`}
+                        }`}
                     >
                       <div className="text-gray-700 font-medium mb-2">{format(day, "d")}</div>
                       <div className="flex flex-col space-y-1">
@@ -209,7 +209,7 @@ const TaskCalendar = ({ tasks, onTaskUpdate }) => {
                                 {...provided.draggableProps}
                                 {...provided.dragHandleProps}
                                 className={`task-event rounded-md p-2 text-black font-normal ${getTaskColor(task.task_status)} ${snapshot.isDragging ? "opacity-50" : ""
-                                }`}
+                                  }`}
                               >
                                 <div className="flex items-center justify-between">
                                   <span>{task.task_desc}</span>
@@ -279,91 +279,189 @@ const AddTask = () => {
   const [isNotificationVisible, setIsNotificationVisible] = useState(false) // Added state
   const [sortBy, setSortBy] = useState("");
   const [currentDate, setCurrentDate] = useState(new Date());
-
+  const [taskSuggestions, setTaskSuggestions] = useState([]);
   const { user } = useAuth()
   const navigate = useNavigate()
+
+  const [taskDay, setTaskDay] = useState("");
+  const [calculatedDueDate, setCalculatedDueDate] = useState(null);
+
+
+  const extractDayOrDateFromDescription = (description) => {
+    const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+    const weekendDays = ["sunday", "saturday"];
+
+    const lowerCaseDescription = description.toLowerCase();
+
+    try {
+      const parsedDate = new Date(lowerCaseDescription);
+      if (!isNaN(parsedDate)) {
+        return parsedDate.toLocaleDateString('en-CA').split('T')[0];
+      }
+    } catch (error) {
+
+    }
+
+
+    for (const day of daysOfWeek) {
+      if (lowerCaseDescription.includes(day)) {
+        return day;
+      }
+    }
+
+    if (lowerCaseDescription.includes("weekend") || lowerCaseDescription.includes("weekends")) {
+      return "weekend";
+    }
+
+    return "";
+  };
+
+  useEffect(() => {
+    const extractedDayOrDate = extractDayOrDateFromDescription(taskDescription);
+    setTaskDay(extractedDayOrDate);
+
+    if (extractedDayOrDate) {
+      let targetDate;
+
+      if (extractedDayOrDate.includes("-")) {
+        targetDate = new Date(extractedDayOrDate);
+        if (isNaN(targetDate)) {
+          setCalculatedDueDate(null);
+          setDueDate("");
+          return;
+        }
+        targetDate.setHours(0, 0, 0, 0)
+      } else if (extractedDayOrDate === "weekend") {
+        targetDate = new Date();
+        targetDate.setHours(0, 0, 0, 0);
+        const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+        targetDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+        while (!["saturday", "sunday"].includes(daysOfWeek[targetDate.getDay()].toLowerCase())) {
+          targetDate.setDate(targetDate.getDate() + 1);
+        }
+      } else {
+        targetDate = new Date();
+        targetDate.setHours(0, 0, 0, 0);
+        const daysOfWeek = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+
+        targetDate = new Date(targetDate.getFullYear(), targetDate.getMonth(), targetDate.getDate());
+
+        const targetDayIndex = daysOfWeek.indexOf(extractedDayOrDate);
+        let currentDayIndex = targetDate.getDay();
+
+        while (daysOfWeek[currentDayIndex].toLowerCase() !== extractedDayOrDate) {
+          targetDate.setDate(targetDate.getDate() + 1);
+          currentDayIndex = targetDate.getDay();
+        }
+      }
+
+      if (targetDate) {
+        setCalculatedDueDate(targetDate);
+        const formattedDate = targetDate.toLocaleDateString("en-CA");
+        setDueDate(formattedDate);
+      }
+
+    } else {
+      setCalculatedDueDate(null);
+      setDueDate("");
+    }
+  }, [taskDescription]);
+
+
+  useEffect(() => {
+    if (taskDescription.length > 3) {
+      const similarTasks = tasks.filter(task =>
+        task.task_desc.toLowerCase().includes(taskDescription.toLowerCase()) && task.task_desc !== taskDescription
+      );
+      setTaskSuggestions(similarTasks.slice(0, 3));
+    } else {
+      setTaskSuggestions([]);
+    }
+  }, [taskDescription, tasks]);
 
   const handleSortChange = (event) => {
     setSortBy(event.target.value); // Update sort option
   };
 
-// Function to get tasks for a specific day
-const getTasksByDay = (tasks) => {
-  const currentDate = new Date();
-  const dateStr = currentDate.toLocaleDateString("en-CA").split('T')[0];
-  return tasks.filter(task => {
-    const taskDate = new Date(task.task_due_date).toLocaleDateString("en-CA").split('T')[0];
-    return taskDate === dateStr;
-  }).sort((a, b) => {
-    // Sort by task score (which includes urgency) in descending order
-    return getTaskScore(b) - getTaskScore(a);
-  });
-};
+  // Function to get tasks for a specific day
+  const getTasksByDay = (tasks) => {
+    const currentDate = new Date();
+    const dateStr = currentDate.toLocaleDateString("en-CA").split('T')[0];
+    return tasks.filter(task => {
+      const taskDate = new Date(task.task_due_date).toLocaleDateString("en-CA").split('T')[0];
+      return taskDate === dateStr;
+    }).sort((a, b) => {
+      // Sort by task score (which includes urgency) in descending order
+      return getTaskScore(b) - getTaskScore(a);
+    });
+  };
 
-// Function to get tasks for the current week
-const getTasksByWeek = (tasks, weekStartDate) => {
-  const start = startOfWeek(weekStartDate, { weekStartsOn: 1 }); // Week starts on Monday
-  const end = endOfWeek(weekStartDate, { weekStartsOn: 1 });
-  
-  return tasks.filter(task => {
-    const taskDate = new Date(task.task_due_date);
-    return isWithinInterval(taskDate, { start, end });
-  }).sort((a, b) => {
-    // First group by day within the week
-    const dateA = new Date(a.task_due_date);
-    const dateB = new Date(b.task_due_date);
-    const dateDiff = dateA.getTime() - dateB.getTime();
-    
-    if (dateDiff !== 0) return dateDiff;
-    
-    // If same day, sort by task score
-    return getTaskScore(b) - getTaskScore(a);
-  });
-};
+  // Function to get tasks for the current week
+  const getTasksByWeek = (tasks, weekStartDate) => {
+    const start = startOfWeek(weekStartDate, { weekStartsOn: 1 }); // Week starts on Monday
+    const end = endOfWeek(weekStartDate, { weekStartsOn: 1 });
 
-// Function to get tasks for the current month
-const getTasksByMonth = (tasks, monthStartDate) => {
-  const start = startOfMonth(monthStartDate);
-  const end = endOfMonth(monthStartDate);
+    return tasks.filter(task => {
+      const taskDate = new Date(task.task_due_date);
+      return isWithinInterval(taskDate, { start, end });
+    }).sort((a, b) => {
+      // First group by day within the week
+      const dateA = new Date(a.task_due_date);
+      const dateB = new Date(b.task_due_date);
+      const dateDiff = dateA.getTime() - dateB.getTime();
 
-  return tasks.filter(task => {
-    const taskDate = new Date(task.task_due_date);
-    return isWithinInterval(taskDate, { start, end });
-  }).sort((a, b) => {
-    // First group by week
-    const dateA = new Date(a.task_due_date);
-    const dateB = new Date(b.task_due_date);
-    const weekA = Math.floor((dateA.getDate() - 1) / 7);
-    const weekB = Math.floor((dateB.getDate() - 1) / 7);
-    
-    if (weekA !== weekB) return weekA - weekB;
-    
-    // If same week, sort by date
-    const dateDiff = dateA.getTime() - dateB.getTime();
-    if (dateDiff !== 0) return dateDiff;
-    
-    // If same date, sort by task score
-    return getTaskScore(b) - getTaskScore(a);
-  });
-};
+      if (dateDiff !== 0) return dateDiff;
 
-// Main filtering function
-const getFilteredTasks = useCallback(() => {
-  const tasksToFilter = isHistoryVisible ? historyTasks : tasks;
-  if (!tasksToFilter.length) return [];
-  
-  switch (sortBy) {
-    case "days":
-      return getTasksByDay(tasksToFilter);
-    case "week":
-      return getTasksByWeek(tasksToFilter, new Date());
-    case "month":
-      return getTasksByMonth(tasksToFilter, new Date());
-    default:
-      // Return all tasks sorted by task score
-      return tasksToFilter.sort((a, b) => getTaskScore(b) - getTaskScore(a));
-  }
-}, [sortBy, tasks, historyTasks, isHistoryVisible]);
+      // If same day, sort by task score
+      return getTaskScore(b) - getTaskScore(a);
+    });
+  };
+
+  // Function to get tasks for the current month
+  const getTasksByMonth = (tasks, monthStartDate) => {
+    const start = startOfMonth(monthStartDate);
+    const end = endOfMonth(monthStartDate);
+
+    return tasks.filter(task => {
+      const taskDate = new Date(task.task_due_date);
+      return isWithinInterval(taskDate, { start, end });
+    }).sort((a, b) => {
+      // First group by week
+      const dateA = new Date(a.task_due_date);
+      const dateB = new Date(b.task_due_date);
+      const weekA = Math.floor((dateA.getDate() - 1) / 7);
+      const weekB = Math.floor((dateB.getDate() - 1) / 7);
+
+      if (weekA !== weekB) return weekA - weekB;
+
+      // If same week, sort by date
+      const dateDiff = dateA.getTime() - dateB.getTime();
+      if (dateDiff !== 0) return dateDiff;
+
+      // If same date, sort by task score
+      return getTaskScore(b) - getTaskScore(a);
+    });
+  };
+
+  // Main filtering function
+  const getFilteredTasks = useCallback(() => {
+    const tasksToFilter = isHistoryVisible ? historyTasks : tasks;
+    if (!tasksToFilter.length) return [];
+
+    switch (sortBy) {
+      case "days":
+        return getTasksByDay(tasksToFilter);
+      case "week":
+        return getTasksByWeek(tasksToFilter, new Date());
+      case "month":
+        return getTasksByMonth(tasksToFilter, new Date());
+      default:
+        // Return all tasks sorted by task score
+        return tasksToFilter.sort((a, b) => getTaskScore(b) - getTaskScore(a));
+    }
+  }, [sortBy, tasks, historyTasks, isHistoryVisible]);
 
 
   const filteredTasks = getFilteredTasks();
@@ -500,6 +598,10 @@ const getFilteredTasks = useCallback(() => {
       return
     }
 
+    if (!calculatedDueDate) {
+      alert("Please specify a valid day or date in the task description (e.g., 'Buy groceries on Monday' or '2024-03-22').");
+      return;
+    }
     try {
       const response = await axios.post(
         "http://localhost:5000/api/task",
@@ -663,7 +765,7 @@ const getFilteredTasks = useCallback(() => {
           <button
             onClick={toggleHistory}
             className={`bg-gradient-to-r from-[#915f78] to-[#882054] text-white p-2 rounded-full shadow-lg hover:bg-[#f6f4d2] hover:text-[#915f78] hover:scale-105 transform transition-all duration-300 ${isHistoryVisible ? "bg-[#f6f4d2] text-[#915f78]" : ""
-            }`}
+              }`}
           >
             <MdHistory className="text-xl" />
           </button>
@@ -726,13 +828,13 @@ const getFilteredTasks = useCallback(() => {
                     <div className="flex items-center space-x-2 ml-4">
                       <div
                         className={`px-3 py-1 rounded-md text-xs font-medium mb-4 mt-3 mr-4 ${task.task_status?.toLowerCase() === "urgent"
-                            ? "bg-red-600 text-red-100"
-                            : task.task_status?.toLowerCase() === "high"
-                              ? "bg-yellow-200 text-yellow-800"
-                              : task.task_status?.toLowerCase() === "normal"
-                                ? "bg-blue-200 text-blue-800"
-                                : "bg-purple-200 text-purple-800"
-                        }`}
+                          ? "bg-red-600 text-red-100"
+                          : task.task_status?.toLowerCase() === "high"
+                            ? "bg-yellow-200 text-yellow-800"
+                            : task.task_status?.toLowerCase() === "normal"
+                              ? "bg-blue-200 text-blue-800"
+                              : "bg-purple-200 text-purple-800"
+                          }`}
                       >
                         {new Date(task.task_due_date)
                           .toLocaleDateString("en-US", {
@@ -811,7 +913,7 @@ const getFilteredTasks = useCallback(() => {
           <div className="bg-[#6e4658] rounded-xl w-full max-w-md p-6 shadow-xl">
             <h2 className=" text-2xl text-white mb-4">{isEditing ? "Edit Task" : "Add Task"}</h2>
             <div className="space-y-4">
-              <div>
+              {/* <div>
                 <p className="text-white mb-1">Due Date</p>
                 <input
                   type="date"
@@ -819,7 +921,7 @@ const getFilteredTasks = useCallback(() => {
                   value={dueDate}
                   onChange={(e) => setDueDate(e.target.value)}
                 />
-              </div>
+              </div> */}
               <div>
                 <p className="text-white mb-1">Task Description</p>
                 <textarea
