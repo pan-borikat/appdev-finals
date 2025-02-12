@@ -371,11 +371,11 @@ const AddTask = () => {
 
 
   useEffect(() => {
-    if (taskDescription.length > 3) {
+    if (taskDescription.length > 1) {
       const similarTasks = tasks.filter(task =>
         task.task_desc.toLowerCase().includes(taskDescription.toLowerCase()) && task.task_desc !== taskDescription
       );
-      setTaskSuggestions(similarTasks.slice(0, 3));
+      setTaskSuggestions(similarTasks.slice(0, 1));
     } else {
       setTaskSuggestions([]);
     }
@@ -930,6 +930,20 @@ const AddTask = () => {
                   onChange={(e) => setTaskDescription(e.target.value)}
                   className="w-full p-2 h-32 rounded resize-none bg-white text-[#6e4658]"
                 />
+
+                {taskSuggestions.length > 0 && ( 
+                    <ul className="mt-2 border border-gray-300 rounded bg-white">
+                        {taskSuggestions.map(suggestion => (
+                            <li
+                                key={suggestion.task_id}
+                                className="p-2 hover:bg-gray-100 cursor-pointer"
+                                onClick={() => setTaskDescription(suggestion.task_desc)} 
+                            >
+                                {suggestion.task_desc}
+                            </li>
+                        ))}
+                    </ul>
+                )}
               </div>
 
               <div>
